@@ -1,0 +1,7 @@
+Burgundy and gold website background
+
+Asset: burgundy-gold-background.png
+Created with the built-in image_gen tool from the user's reference screenshot.
+
+Prompt:
+Use case: precise-object-edit. Asset type: website background. Edit target: the attached burgundy and gold abstract wave image. Remove only the red Russian word «Текст» at center right and reconstruct the smooth dark burgundy shading behind it. Preserve the entire existing wave composition, gold metallic outlines, textured gold corners, dark wine red palette, shadows and highlights. Fill the tiny white rounded corner areas with matching adjacent artwork so the result is a full-bleed rectangular background. No text, letters, logos, watermark or added elements. High resolution clean background.

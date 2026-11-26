@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4a1326" />
+    <title>Кадр — мой список просмотра</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="Кадр — главная"><span class="brand-symbol">к.</span>кадр<span class="brand-period">.</span></a>
+        <span class="header-note"><span class="live-dot"></span> Личная коллекция впечатлений</span>
+      </header>
+
+      <main>
+        <section class="intro" aria-labelledby="page-title">
+          <div class="eyebrow"><span></span> СОХРАНЯЙ. СМОТРИ. ВСПОМИНАЙ.</div>
+          <h1 id="page-title">Хорошее кино.<br />В одном <span>месте.</span></h1>
+          <p>Всё, что хочется посмотреть. И всё, что осталось<br class="desktop-break" /> с тобой после финальных титров.</p>
+          <div class="cinema-scene is-paused">
+            <svg class="cinema-art" viewBox="0 0 380 270" aria-hidden="true" focusable="false">
+              <defs>
+                <linearGradient id="camera-gold" x2="1" y2="1"><stop stop-color="#fff0bf"/><stop offset=".45" stop-color="#c69449"/><stop offset=".7" stop-color="#f3d18e"/><stop offset="1" stop-color="#946028"/></linearGradient>
+                <linearGradient id="camera-body" x2="0" y2="1"><stop stop-color="#783047"/><stop offset="1" stop-color="#260e19"/></linearGradient>
+                <radialGradient id="camera-glass"><stop stop-color="#a5b5b0"/><stop offset=".3" stop-color="#4a5c5d"/><stop offset=".65" stop-color="#17282d"/><stop offset="1" stop-color="#0e121b"/></radialGradient>
+                <g id="film-frames">
+                  <rect width="384" height="68" fill="#200f18"/>
+                  <svg x="8" y="13" width="78" height="42" viewBox="0 0 78 42" overflow="hidden">
+                    <image href="assets/film-still-01.png" width="78" height="42" preserveAspectRatio="xMidYMid slice"/>
+                  </svg>
+                  <rect x="8" y="13" width="78" height="42" fill="none" stroke="#bc8c50" stroke-width="1"/>
+                  <svg x="104" y="13" width="78" height="42" viewBox="0 0 78 42" overflow="hidden">
+                    <image href="assets/film-still-02.png" width="78" height="42" preserveAspectRatio="xMidYMid slice"/>
+                  </svg>
+                  <rect x="104" y="13" width="78" height="42" fill="none" stroke="#bc8c50" stroke-width="1"/>
+                  <svg x="200" y="13" width="78" height="42" viewBox="0 0 78 42" overflow="hidden">
+                    <image href="assets/film-still-03.png" width="78" height="42" preserveAspectRatio="xMidYMid slice"/>
+                  </svg>
+                  <rect x="200" y="13" width="78" height="42" fill="none" stroke="#bc8c50" stroke-width="1"/>
+                  <svg x="296" y="13" width="78" height="42" viewBox="0 0 78 42" overflow="hidden">
+                    <image href="assets/film-still-04.png" width="78" height="42" preserveAspectRatio="xMidYMid slice"/>
+                  </svg>
+                  <rect x="296" y="13" width="78" height="42" fill="none" stroke="#bc8c50" stroke-width="1"/>
+                  <path d="M0 1H384M0 67H384" stroke="#d3a763" stroke-width="2"/>
+                  <path d="M0 6H384M0 62H384" stroke="#e5c58e" stroke-width="5" stroke-dasharray="7 5"/>
+                </g>
+                <clipPath id="film-window"><rect width="380" height="68" rx="3"/></clipPath>
+                <g id="camera-reel">
+                  <circle r="46" fill="url(#camera-gold)" stroke="#f6dca3" stroke-width="1.5"/>
+                  <circle r="39" fill="#301520" stroke="#8e5c35"/>
+                  <g fill="url(#camera-gold)"><circle cy="-24" r="10"/><circle cx="23" cy="-7" r="10"/><circle cx="14" cy="20" r="10"/><circle cx="-14" cy="20" r="10"/><circle cx="-23" cy="-7" r="10"/></g>
+                  <circle r="6" fill="#e7c184"/><circle r="2" fill="#321521"/>
+                </g>
+              </defs>
+              <ellipse cx="205" cy="242" rx="135" ry="12" fill="#13080e" opacity=".4"/>
+              <g transform="translate(2 175) rotate(-10 190 34)">
+                <g clip-path="url(#film-window)"><g class="film-motion"><use href="#film-frames"/><use href="#film-frames" x="384"/></g></g>
+              </g>
+              <g stroke-linejoin="round">
+                <path d="M197 181 166 238M206 181 234 238M201 184V240" fill="none" stroke="url(#camera-gold)" stroke-width="7" stroke-linecap="round"/>
+                <rect x="124" y="88" width="143" height="98" rx="14" fill="url(#camera-body)" stroke="url(#camera-gold)" stroke-width="3"/>
+                <rect x="137" y="113" width="106" height="57" rx="7" fill="#381521" stroke="#b3834c"/>
+                <path d="M264 119 301 103V171L264 155Z" fill="url(#camera-gold)" stroke="#f2cf8f" stroke-width="2"/>
+                <ellipse cx="303" cy="137" rx="13" ry="35" fill="#251a23" stroke="url(#camera-gold)" stroke-width="4"/>
+                <ellipse cx="304" cy="137" rx="8" ry="26" fill="url(#camera-glass)"/>
+                <path d="M304 118Q298 137 304 149" fill="none" stroke="#e8eee0" opacity=".35" stroke-width="2"/>
+                <use href="#camera-reel" x="157" y="65"/><use href="#camera-reel" x="249" y="59"/>
+                <circle cx="146" cy="128" r="4" fill="#e4bd7b"/>
+                <path d="M151 155H223" stroke="#a27447"/>
+                <text x="188" y="144" text-anchor="middle" fill="#e4bd7b" font-size="10" font-family="Georgia,serif" letter-spacing="4">КАДР</text>
+              </g>
+            </svg>
+            <button class="motion-toggle" id="motion-toggle" type="button" hidden>Включить анимацию</button>
+          </div>
+        </section>
+
+        <section class="form-panel" aria-labelledby="form-title">
+          <div class="section-heading"><span class="section-number">01</span><h2 id="form-title">Что будем смотреть?</h2><span class="heading-note">Добавьте новую историю</span></div>
+          <form id="title-form">
+            <div class="form-top">
+              <div class="field title-field"><label for="title">Название <span class="required">*</span></label><input id="title" name="title" placeholder="Например, Отель «Гранд Будапешт»" required maxlength="160" /></div>
+              <div class="field"><label for="category">Категория</label><select id="category" name="category"><option>Фильм</option><option>Сериал</option><option>Мультфильм</option><option>Другое</option></select></div>
+              <fieldset class="field status-field"><legend>Статус</legend><div class="status-control"><label><input type="radio" name="status" value="planned" checked /><span>Хочу посмотреть</span></label><label><input type="radio" name="status" value="watched" /><span>Посмотрел</span></label></div></fieldset>
+            </div>
+            <div class="form-bottom">
+              <div class="field comment-field"><label for="comment">Комментарий / впечатления <span class="optional">необязательно</span></label><textarea id="comment" name="comment" rows="2" maxlength="3000" placeholder="Почему стоит посмотреть или чем запомнилось?"></textarea></div>
+              <fieldset class="field rating-field"><legend>Ваша оценка <span id="rating-caption" class="optional">необязательно</span></legend><div class="rating-picker" id="rating-picker" role="group" aria-label="Оценка от 1 до 10"></div><div class="rating-hints"><span>Не моё</span><span>В самое сердце</span></div></fieldset>
+            </div>
+            <div class="form-footer"><span><span class="privacy-icon">◈</span> Ваш список сохраняется в этом браузере</span><button class="primary-button" type="submit">Добавить в коллекцию <span aria-hidden="true">↗</span></button></div>
+            <p id="form-message" class="form-message" role="status" hidden></p>
+          </form>
+        </section>
+
+        <section class="collection" aria-labelledby="collection-title">
+          <div class="section-heading collection-heading"><span class="section-number">02</span><h2 id="collection-title">Моя коллекция</h2><span id="total-count" class="count-badge">0</span><span class="sort-note">Сначала новые <span aria-hidden="true">↓</span></span></div>
+          <div class="filter-bar"><div id="category-filters" class="category-filters" role="group" aria-label="Фильтр по категории"><button class="filter-chip active" data-category="all" type="button" aria-pressed="true">Все тайтлы</button><button class="filter-chip" data-category="Фильм" type="button" aria-pressed="false">Фильмы</button><button class="filter-chip" data-category="Сериал" type="button" aria-pressed="false">Сериалы</button><button class="filter-chip" data-category="Мультфильм" type="button" aria-pressed="false">Мультфильмы</button><button class="filter-chip" data-category="Другое" type="button" aria-pressed="false">Другое</button></div><div class="status-filter-wrap"><label for="status-filter" class="sr-only">Фильтр по статусу</label><select id="status-filter"><option value="all">Все статусы</option><option value="planned">Хочу посмотреть</option><option value="watched">Посмотрел</option></select></div></div>
+          <div id="collection-list" class="collection-list" aria-live="polite"></div>
+          <div id="empty-state" class="empty-state"><div class="empty-icon" aria-hidden="true">▤<span>+</span></div><h3>Здесь начнётся ваша история</h3><p>Добавьте первый тайтл — фильм на вечер,<br />сериал на выходные или любимый мультфильм.</p><button id="first-title-button" class="text-button" type="button">Добавить первый тайтл <span aria-hidden="true">↑</span></button></div>
+        </section>
+      </main>
+      <footer class="site-footer"><span class="footer-brand">кадр.</span><span>Жизнь слишком коротка для плохого кино.</span><span>Ваша следующая история уже ждёт <span class="footer-star">✳</span></span></footer>
+    </div>
+    <template id="entry-template"><article class="entry"><div class="entry-art" aria-hidden="true"><span></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-comment"></p><button class="entry-status" type="button"></button></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить тайтл" title="Удалить тайтл">×</button></div></article></template>
+  </body>
+</html>
