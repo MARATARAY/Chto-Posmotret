@@ -70,3 +70,27 @@ button:focus-visible,a:focus-visible,input:focus,textarea:focus,select:focus{out
 @media(min-width:601px) and (max-width:760px){.cinema-scene{width:235px;top:62px}.intro h1{font-size:39px}.intro>p{max-width:245px}}
 @media(max-width:600px){.cinema-scene{position:relative;right:auto;top:auto;width:min(100%,300px);margin:18px auto 0}.intro>p{max-width:100%}.cinema-art{overflow:hidden}.motion-toggle{margin-top:3px}.intro{padding-bottom:29px}}
 @media(prefers-reduced-motion:reduce){.cinema-scene:not(.motion-enabled) .film-motion{animation-play-state:paused}}
+
+/* Projector flares: visible edge streaks and a warm resting sheen. */
+.form-panel,.collection{position:relative;isolation:isolate}
+.form-panel::before,.collection::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none}
+.form-panel::before{background:radial-gradient(ellipse 260px 130px at 0 0,#efbf66a6,transparent 76%),radial-gradient(ellipse 230px 140px at 100% 100%,#dfa94d66,transparent 76%);box-shadow:inset 0 1px 0 #fff2bd,inset 1px 0 0 #edc77888,0 0 24px #e8b65026}
+.collection::before{border-radius:13px;background:radial-gradient(ellipse 320px 140px at 0 0,#efc57559,transparent 76%),radial-gradient(ellipse 260px 150px at 100% 100%,#e7b45238,transparent 76%)}
+.form-panel::after,.collection::after{content:"";position:absolute;top:0;left:4%;width:70%;height:2px;border-radius:50%;pointer-events:none;background:linear-gradient(90deg,transparent,#e6b458 15%,#fff7d9 38%,#f3cf80 55%,transparent);box-shadow:0 0 10px #ffdc8f99,0 0 22px #eeb85b55}
+.collection::after{top:-10px;width:62%;left:0}
+.primary-button,.motion-toggle{position:relative;isolation:isolate;overflow:hidden;box-shadow:inset 0 1px 0 #ffe8b880,0 0 14px #e8b85826}
+.primary-button::before,.motion-toggle::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 15% 0,#ffe8ad55,transparent 65%),linear-gradient(115deg,#e4b4541f,transparent 60%)}
+.primary-button::after,.motion-toggle::after{content:"";position:absolute;z-index:-1;pointer-events:none;top:-100%;bottom:-100%;left:-70%;width:65%;background:linear-gradient(90deg,transparent,#efc46c55 25%,#fff5cfb3 50%,#efc46c55 75%,transparent);opacity:0;transform:translateX(0) rotate(20deg)}
+.primary-button:focus-visible::after,.motion-toggle:focus-visible::after{animation:projector-sweep 1.4s ease-out forwards}
+button:focus-visible{box-shadow:0 0 0 1px #f0ca7baa,0 0 16px #edc47766}
+@media(hover:hover) and (pointer:fine){
+  .primary-button:hover::after,.motion-toggle:hover::after{animation:projector-sweep 1.4s ease-out forwards}
+  button:hover{box-shadow:0 0 0 1px #f0ca7b99,0 0 16px #edc47755}
+}
+@keyframes projector-sweep{0%{opacity:0;transform:translateX(0) rotate(20deg)}15%,75%{opacity:1}100%{opacity:0;transform:translateX(320%) rotate(20deg)}}
+@media(max-width:600px){.form-panel::after,.collection::after{width:85%}}
+@media(prefers-reduced-motion:reduce){
+  .primary-button::after,.motion-toggle::after{top:0;bottom:0;left:0;width:100%;transform:none;background:linear-gradient(110deg,#ffe3a54d,transparent 65%)}
+  .primary-button:focus-visible::after,.motion-toggle:focus-visible::after{animation:none;opacity:1}
+}
+@media(prefers-reduced-motion:reduce) and (hover:hover) and (pointer:fine){.primary-button:hover::after,.motion-toggle:hover::after{animation:none;opacity:1}}
