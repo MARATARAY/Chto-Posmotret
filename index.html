@@ -91,8 +91,8 @@
               <div class="field"><label for="duration">Длительность <span class="required">*</span></label><input id="duration" name="duration" type="text" inputmode="numeric" placeholder="120" required aria-describedby="duration-unit duration-error" /><span id="duration-unit" class="field-hint">В минутах</span><span id="duration-error" class="field-error" hidden></span></div>
             </div>
             <div class="form-bottom">
-              <div class="field comment-field"><label for="comment">Комментарий / впечатления <span class="optional">необязательно</span></label><textarea id="comment" name="comment" rows="2" maxlength="3000" placeholder="Почему стоит посмотреть или чем запомнилось?"></textarea></div>
-              <fieldset class="field rating-field"><legend>Ваша оценка <span id="rating-caption" class="optional">необязательно</span></legend><div class="rating-picker" id="rating-picker" role="group" aria-label="Оценка от 1 до 10"></div><div class="rating-hints"><span>Не моё</span><span>В самое сердце</span></div></fieldset>
+              <div class="field comment-field"><label for="comment">Комментарий / впечатления <span class="optional">необязательно</span></label><textarea id="comment" name="comment" rows="2" maxlength="3000" aria-describedby="comment-error" placeholder="Почему стоит посмотреть или чем запомнилось?"></textarea><span id="comment-error" class="field-error" hidden></span></div>
+              <div class="field rating-field"><label for="personal-rating">Ваша оценка <span class="optional">необязательно</span></label><input id="personal-rating" name="personalRating" type="text" inputmode="decimal" placeholder="8.4" disabled aria-describedby="personal-rating-hint personal-rating-error" /><span id="personal-rating-hint" class="field-hint">Чтобы оценить, отметьте как просмотренное</span><span id="personal-rating-error" class="field-error" hidden></span></div>
             </div>
             <div class="form-footer"><span><span class="privacy-icon">◈</span> Ваш список сохраняется в этом браузере</span><button class="primary-button" type="submit">Добавить в каталог <span aria-hidden="true">↗</span></button></div>
             <p id="form-message" class="form-message" role="status" hidden></p>
@@ -104,7 +104,9 @@
           <div class="collection-views" id="collection-views" role="group" aria-label="Раздел коллекции">
             <button type="button" class="view-button active" data-view="catalog" aria-pressed="true">Каталог</button>
             <button type="button" class="view-button" data-view="favorites" aria-pressed="false">Избранное</button>
+            <button type="button" class="view-button" data-view="best" aria-pressed="false">Лучшее</button>
           </div>
+          <p id="best-description" class="best-description" hidden>Просмотренное с вашей оценкой от 8.0</p>
           <div class="catalog-search"><label for="catalog-search">Поиск по названию</label><input id="catalog-search" type="search" placeholder="Введите название" maxlength="160" /></div>
           <p id="favorites-message" class="favorites-message" role="status" hidden></p>
           <div class="filter-bar"><div id="category-filters" class="category-filters" role="group" aria-label="Фильтр по категории"><button class="filter-chip active" data-category="all" type="button" aria-pressed="true">Все</button><button class="filter-chip" data-category="Фильм" type="button" aria-pressed="false">Фильмы</button><button class="filter-chip" data-category="Сериал" type="button" aria-pressed="false">Сериалы</button><button class="filter-chip" data-category="Мультфильм" type="button" aria-pressed="false">Мультфильмы</button></div><div class="status-filter-wrap"><label for="status-filter" class="sr-only">Фильтр по статусу</label><select id="status-filter"><option value="all">Все статусы</option><option value="planned">Хочу посмотреть</option><option value="watched">Посмотрел</option></select></div></div>
@@ -114,6 +116,14 @@
       </main>
       <footer class="site-footer"><span class="footer-brand">кадр.</span><span>Жизнь слишком коротка для плохого кино.</span><span>Ваша следующая история уже ждёт <span class="footer-star">✳</span></span></footer>
     </div>
-    <template id="entry-template"><article class="entry"><div class="entry-art" aria-hidden="true"><span></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-details" hidden></p><p class="entry-comment"></p><div class="entry-actions"><button class="entry-status" type="button"></button><button class="entry-favorite" type="button" aria-pressed="false">В избранное</button></div></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить карточку" title="Удалить карточку">×</button></div></article></template>
+    <template id="entry-template"><article class="entry"><div class="entry-art" aria-hidden="true"><span></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-details" hidden></p><p class="entry-comment"></p><div class="entry-actions"><button class="entry-status" type="button"></button><button class="entry-favorite" type="button" aria-pressed="false">В избранное</button><button class="entry-review-toggle" type="button" aria-expanded="false">Оценка и заметка</button></div></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить карточку" title="Удалить карточку">×</button></div></article></template>
+    <template id="review-template">
+      <form class="review-editor" novalidate hidden>
+        <div class="field"><label class="review-rating-label">Ваша оценка <span class="optional">необязательно</span></label><input class="review-rating-input" name="reviewRating" type="text" inputmode="decimal" placeholder="От 1.0 до 10.0" /><span class="review-hint">Чтобы оценить, отметьте как просмотренное</span><span class="review-rating-error" hidden></span></div>
+        <div class="field"><label class="review-note-label">Заметка <span class="optional">до 3000 символов</span></label><textarea class="review-note-input" name="reviewNote" rows="4" maxlength="3000"></textarea><span class="review-note-error" hidden></span></div>
+        <p class="review-save-error" role="alert" hidden></p>
+        <div class="review-actions"><button class="review-save" type="submit">Сохранить</button><button class="review-cancel" type="button">Отмена</button></div>
+      </form>
+    </template>
   </body>
 </html>

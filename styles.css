@@ -121,3 +121,24 @@ input:not([type="radio"]),select,textarea,.status-control label,.status-control 
 .form-panel [aria-invalid="true"]{border:2px solid #a4334a}
 .entry-details{font-size:12px;line-height:1.7;color:#f0d3ad;margin:0 0 12px;overflow-wrap:anywhere}
 @media(max-width:600px){.card-details-fields{grid-template-columns:1fr;gap:18px}.entry-details{font-size:11px}}
+
+/* Personal reviews stay distinct from the catalog rating. */
+.best-description{color:#f2d3a0;font-size:12px;line-height:1.7;margin:12px 0 0}
+.entry-review-toggle{min-height:44px;padding:9px 12px;border:1px solid #b88955;border-radius:6px;background:#351320;color:#f2d3a0;font-size:12px}
+.entry-review-toggle[aria-expanded="true"]{border-color:#ffe6b2;background:#663147}
+.review-editor{padding:18px;margin-top:16px;border:1px solid #b8895577;border-radius:9px;background:#2d101ddf;display:grid;gap:16px;min-width:0}
+.review-editor label{color:#f7e1ca;font-size:12px;line-height:1.6}
+.review-editor input,.review-editor textarea{background:#421b2b;color:#fff3ec;border-color:#b88955;font-size:14px;min-height:44px}
+.review-editor input:disabled{opacity:.6;cursor:not-allowed}
+.review-editor [aria-invalid="true"]{border:2px solid #ffc0ad}
+.review-hint{font-size:11px;color:#d5b3bd;line-height:1.6}
+.review-rating-error,.review-note-error,.review-save-error{font-size:12px;color:#ffd0bb;line-height:1.6;margin:0;overflow-wrap:anywhere}
+.review-actions{display:flex;gap:8px;flex-wrap:wrap}
+.review-actions button{padding:10px 16px;border:1px solid #c79b5c;border-radius:6px;background:#f2d3a0;color:#42192a;font-size:12px}
+.review-actions .review-cancel{background:transparent;color:#f2d3a0}
+.entry-rating{font-size:12px;white-space:normal;line-height:1.6;max-width:150px}
+.entry-rating small{display:block}
+.view-button[aria-pressed="true"]{background:#f2d3a0;color:#42192a;border-color:#f2d3a0}
+.view-button[aria-pressed="false"]{background:#32121e;color:#ffe9d2;border-color:#bb8b5b}
+.form-panel input:disabled{opacity:.65;cursor:not-allowed}
+@media(max-width:600px){.view-button{flex:1 1 90px;padding:10px 12px}.entry-review-toggle{font-size:11px}.review-editor{padding:13px}.review-actions button{flex:1}.entry-rating{max-width:none}}

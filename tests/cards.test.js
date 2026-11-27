@@ -16,11 +16,13 @@ function boot(rawFavorites, options = {}) {
     click() {this.handlers.click?.({target:this});}
   }
   const ids={}; document={activeElement:null,body:new El(),querySelector(s){return ids[s] ||= new El(s);},querySelectorAll(s){if(s==='[data-view]')return views;if(s==='[data-category].filter-chip')return cats;return [];},createElement(){return new El();},createDocumentFragment(){return new El('fragment');}};
-  const views=['catalog','favorites'].map(view=>{const e=new El();e.dataset.view=view;return e;});
+  const views=['catalog','favorites','best'].map(view=>{const e=new El();e.dataset.view=view;return e;});
   const cats=['all','Фильм','Сериал','Мультфильм'].map(category=>{const e=new El();e.dataset.category=category;return e;});
   ids['[data-view="favorites"]']=views[1];
   ids['[data-view="catalog"]']=views[0];
+  ids['[data-view="best"]']=views[2];
   document.querySelector('#entry-template').content={firstElementChild:{cloneNode(){const e=new El('.entry'); e.querySelector('.entry-favorite').kind='.entry-favorite';return e;}}};
+  document.querySelector('#review-template').content={firstElementChild:{cloneNode(){return new El('.review-editor');}}};
   const entries=[['a','Одинаковое имя','Фильм'],['b','Одинаковое имя','Сериал'],['c','Мультфильм','Мультфильм']].map(([id,title,category],i)=>({id,title,category,status:'planned',rating:8,comment:'text',createdAt:1000-i}));
   const store=new Map([['kadr.watchlist.v1',JSON.stringify(options.entries || entries)],['kadr.favorites.v1',rawFavorites ?? '[]'],['unrelated','keep']]);
   const events={};const localStorage={getItem(k){if(options.blockRead)throw Error('denied');return store.get(k)??null;},setItem(k,v){if(options.blockWrite)throw Error('quota');store.set(k,v);}};
@@ -79,3 +81,38 @@ const deletedReload=boot(del.store.get('kadr.favorites.v1'),{entries:del.saved()
 del.ids['#form-message'].children[0].click();assert.equal(del.count(),'1');assert.equal(del.list.children[0].querySelector('.entry-favorite').attrs['aria-pressed'],'true');
 const safe=boot();safe.submit({...valid,title:'<script>alert(1)</script>'});assert.equal(safe.list.children[0].querySelector('.entry-title').textContent,'<script>alert(1)</script>');
 console.log('PASS: all new fields, decimal normalization, validation boundaries, units/plurals, legacy data, duplicate names/IDs, transactional storage failures, delete/undo/reload, favorites and literal text rendering.');
+
+function openReview(app, index=0) {
+  app.list.children[index].querySelector('.entry-review-toggle').click();
+  return reviewEditor(app,index);
+}
+function reviewEditor(app,index=0) {
+  return app.list.children[index].querySelector('.entry-body').children.find(el=>el.kind==='.review-editor');
+}
+function fillReview(editor, rating, note) {
+  const score=editor.querySelector('.review-rating-input');score.value=rating;score.handlers.input();
+  const text=editor.querySelector('.review-note-input');text.value=note;text.handlers.input();
+}
+function saveReview(editor) {editor.handlers.submit({preventDefault(){}});}
+const reviewEntries=[['first',8,'watched'],['second',9,'watched'],['third',9,'watched'],['low',7.9,'watched'],['unrated',null,'watched'],['planned',10,'planned']].map(([id,rating,status],i)=>({id,title:'Same name',category:i===1?'Сериал':'Фильм',status,rating,comment:'Original note',createdAt:2000-i,catalogRating:6.5,year:'2024',duration:120,durationUnit:'minutes'}));
+const reviews=boot('["first"]',{entries:reviewEntries});const catalogOrder=reviews.list.children.map(card=>card.dataset.id);
+reviews.view('best');assert.deepEqual(reviews.list.children.map(card=>card.dataset.id),['second','third','first']);assert.equal(reviews.count(),'3');assert.equal(reviews.ids['#best-description'].hidden,false);
+reviews.category('Сериал');assert.equal(reviews.count(),'1');reviews.search('no match');assert.equal(reviews.count(),'0');assert.equal(reviews.ids['#empty-state'].querySelector('h3').textContent,'Ничего не найдено');
+reviews.search('');reviews.category('all');let editor=openReview(reviews);fillReview(editor,'7.9','  Changed\nsecond line  ');saveReview(editor);
+assert.deepEqual(reviews.list.children.map(card=>card.dataset.id),['third','first']);assert.equal(reviews.saved().find(e=>e.id==='second').comment,'Changed\nsecond line');assert.equal(reviews.saved().find(e=>e.id==='second').catalogRating,6.5);assert.equal(reviews.document.activeElement,reviews.list.children[0].querySelector('.entry-review-toggle'));
+reviews.view('catalog');assert.deepEqual(reviews.list.children.map(card=>card.dataset.id),catalogOrder);assert.equal(reviews.saved().find(e=>e.id==='first').rating,8);assert.equal(reviews.store.get('kadr.favorites.v1'),'["first"]');
+editor=openReview(reviews);const beforeCancel=reviews.store.get('kadr.watchlist.v1');fillReview(editor,'10','Unsaved');editor.querySelector('.review-cancel').click();assert.equal(reviews.store.get('kadr.watchlist.v1'),beforeCancel);assert.equal(reviews.document.activeElement,reviews.list.children[0].querySelector('.entry-review-toggle'));
+for(const invalid of ['0','0.9','10.1','8.44','8.40','abc','-1','1e1','Infinity']){editor=openReview(reviews);fillReview(editor,invalid,'Draft kept');const before=reviews.store.get('kadr.watchlist.v1');saveReview(editor);assert.equal(reviews.store.get('kadr.watchlist.v1'),before);assert.equal(editor.querySelector('.review-rating-error').hidden,false);assert.equal(editor.querySelector('.review-note-input').value,'Draft kept');editor.querySelector('.review-cancel').click();}
+for(const [input,expected] of [['1',1],['1.0',1],['10.0',10],['8,4',8.4]]){editor=openReview(reviews);fillReview(editor,input,'<b>literal</b>\nnext');saveReview(editor);assert.equal(reviews.saved()[0].rating,expected);assert.equal(reviews.list.children[0].querySelector('.entry-comment').textContent,'<b>literal</b>\nnext');}
+const reviewReload=boot(reviews.store.get('kadr.favorites.v1'),{entries:reviews.saved()});assert.equal(reviewReload.saved()[0].rating,8.4);assert.equal(reviewReload.list.children[0].querySelector('.entry-rating').textContent,'Ваша оценка 8.4');
+editor=openReview(reviews);fillReview(editor,'8.0','x'.repeat(3001));let beforeLong=reviews.store.get('kadr.watchlist.v1');saveReview(editor);assert.equal(reviews.store.get('kadr.watchlist.v1'),beforeLong);assert.equal(editor.querySelector('.review-note-error').hidden,false);fillReview(editor,'8.0','x'.repeat(3000));saveReview(editor);assert.equal(reviews.saved()[0].comment.length,3000);
+editor=openReview(reviews);fillReview(editor,'','   ');saveReview(editor);assert.equal(reviews.saved()[0].rating,null);assert.equal(reviews.saved()[0].comment,'');
+const plannedReview=boot(null,{entries:[reviewEntries[5]]});editor=openReview(plannedReview);assert.equal(editor.querySelector('.review-rating-input').disabled,true);fillReview(editor,'5.0','Planned note');saveReview(editor);assert.equal(plannedReview.saved()[0].rating,10);assert.equal(plannedReview.saved()[0].comment,'Planned note');plannedReview.view('best');assert.equal(plannedReview.count(),'0');assert.equal(plannedReview.ids['#empty-state'].querySelector('h3').textContent,'В лучшем пока пусто');plannedReview.view('catalog');plannedReview.list.children[0].querySelector('.entry-status').click();plannedReview.view('best');assert.equal(plannedReview.count(),'1');plannedReview.list.children[0].querySelector('.entry-status').click();assert.equal(plannedReview.count(),'0');assert.equal(plannedReview.saved()[0].rating,10);
+const reviewFailure=boot('["first"]',{entries:reviewEntries,blockWrite:true});editor=openReview(reviewFailure);fillReview(editor,'9.5','Keep my draft');const storedBefore=reviewFailure.store.get('kadr.watchlist.v1');saveReview(editor);assert.equal(reviewFailure.store.get('kadr.watchlist.v1'),storedBefore);assert.equal(editor.hidden,false);assert.equal(editor.querySelector('.review-save-error').hidden,false);assert.equal(editor.querySelector('.review-note-input').value,'Keep my draft');
+const bestUndo=boot('["first"]',{entries:reviewEntries});bestUndo.view('best');bestUndo.list.children[0].querySelector('.delete-button').click();assert.equal(bestUndo.count(),'2');bestUndo.ids['#form-message'].children[0].click();assert.equal(bestUndo.count(),'3');assert.deepEqual(bestUndo.list.children.map(e=>e.dataset.id),['second','third','first']);
+const createReview=boot();createReview.submit({...valid,status:'watched',personalRating:'8,4'});assert.equal(createReview.saved()[0].rating,8.4);createReview.view('best');assert.equal(createReview.count(),'1');
+const createPlanned=boot();createPlanned.submit({...valid,status:'planned',personalRating:'9.5'});assert.equal(createPlanned.saved()[0].rating,null);
+const createInvalid=boot();createInvalid.submit({...valid,status:'watched',personalRating:'8.44'});assert.equal(createInvalid.count(),'3');assert.equal(createInvalid.ids['#personal-rating'].attrs['aria-invalid'],'true');
+console.log('PASS: review edit/cancel/clear, decimals and boundaries, notes and literal markup, storage failure drafts, legacy scores, watched-only ratings, best threshold/sort/ties/filters/status/undo, catalog/favorites preservation and focus.');
+const createAccess=boot();assert.equal(createAccess.ids['#personal-rating'].disabled,true);createAccess.ids['#title-form'].values={status:'watched'};createAccess.ids['#title-form'].handlers.change();assert.equal(createAccess.ids['#personal-rating'].disabled,false);createAccess.ids['#title-form'].values={status:'planned'};createAccess.ids['#title-form'].handlers.change();assert.equal(createAccess.ids['#personal-rating'].disabled,true);
+console.log('PASS: create-form personal rating enables only for watched status.');
