@@ -64,14 +64,15 @@
     message.hidden = false;
   }
 
-  function persist() {
+  function persist(nextEntries = entries, errorText = 'Не удалось сохранить список в браузере. Попробуйте ещё раз.') {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextEntries));
+      entries = nextEntries;
       storageAvailable = true;
       return true;
     } catch {
       storageAvailable = false;
-      showMessage('Не удалось сохранить список в браузере. Изменения останутся до закрытия страницы.', true);
+      showMessage(errorText, true);
       return false;
     }
   }
@@ -128,7 +129,8 @@
   }
 
   function render() {
-    const focusedButton = document.activeElement?.closest('.entry-favorite');
+    const focusedButton = document.activeElement?.closest('.entry-favorite, .delete-button');
+    const focusSelector = focusedButton?.classList.contains('delete-button') ? '.delete-button' : '.entry-favorite';
     const oldCards = [...list.children];
     const focusedCard = focusedButton?.closest('.entry');
     const focusedId = focusedCard?.dataset.id;
@@ -158,6 +160,15 @@
       card.querySelector('.entry-title').textContent = entry.title;
       card.querySelector('.entry-category').textContent = entry.category;
       card.querySelector('.entry-date').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(entry.createdAt);
+      const details = [];
+      if (/^[1-9]\d{3}$/.test(String(entry.year ?? ''))) details.push(String(entry.year));
+      if (Number.isFinite(entry.catalogRating) && entry.catalogRating >= 0 && entry.catalogRating <= 10) details.push(`Рейтинг ${entry.catalogRating.toFixed(1)}`);
+      if (Number.isInteger(entry.duration) && entry.duration > 0 && entry.duration <= 9999) {
+        details.push(entry.durationUnit === 'seasons' ? seasonLabel(entry.duration) : `${entry.duration} мин`);
+      }
+      const detailLine = card.querySelector('.entry-details');
+      detailLine.textContent = details.join(' · ');
+      detailLine.hidden = details.length === 0;
       card.querySelector('.entry-comment').textContent = entry.comment;
       card.querySelector('.entry-comment').hidden = !entry.comment;
       card.querySelector('.entry-art > span').textContent = { 'Фильм': '▶', 'Сериал': '▤', 'Мультфильм': '✳', 'Другое': '◈' }[entry.category];
@@ -169,16 +180,16 @@
         const denominator = document.createElement('small');
         denominator.textContent = ' / 10';
         score.append(denominator);
-        score.setAttribute('aria-label', `Оценка ${entry.rating} из 10`);
+        score.setAttribute('aria-label', `Ваша оценка ${entry.rating} из 10`);
       }
       const statusButton = card.querySelector('.entry-status');
       statusButton.dataset.status = entry.status;
       statusButton.textContent = entry.status === 'watched' ? '✓ Посмотрел' : '◷ Хочу посмотреть';
       statusButton.title = entry.status === 'watched' ? 'Переместить в «Хочу посмотреть»' : 'Отметить как просмотренное';
       statusButton.addEventListener('click', () => {
-        entry.status = entry.status === 'watched' ? 'planned' : 'watched';
-        persist();
-        render();
+        const nextEntries = entries.map(item => item.id === entry.id
+          ? { ...item, status: item.status === 'watched' ? 'planned' : 'watched' } : item);
+        if (persist(nextEntries)) render();
       });
       const favoriteButton = card.querySelector('.entry-favorite');
       const isFavorite = favoriteIds.has(entry.id);
@@ -194,29 +205,29 @@
         render();
       });
       const deleteButton = card.querySelector('.delete-button');
-      deleteButton.setAttribute('aria-label', `Удалить «${entry.title}»`);
+      deleteButton.setAttribute('aria-label', `Удалить карточку «${entry.title}»`);
+      deleteButton.hidden = entry.origin === 'builtin';
       deleteButton.addEventListener('click', () => {
-        entries = entries.filter(item => item.id !== entry.id);
-        const saved = persist();
+        deleteButton.focus();
+        const nextEntries = entries.filter(item => item.id !== entry.id);
+        const saved = persist(nextEntries, 'Не удалось удалить карточку из сохранённого каталога');
+        if (!saved) return;
         render();
-        if (saved) {
-          showMessage(`«${entry.title}» удалён из коллекции. `);
-          const undo = document.createElement('button');
-          undo.type = 'button';
-          undo.className = 'text-button';
-          undo.style.marginTop = '0';
-          undo.textContent = 'Отменить удаление';
-          undo.addEventListener('click', () => {
-            if (!entries.some(item => item.id === entry.id)) {
-              entries.push(entry);
-              entries.sort((a, b) => b.createdAt - a.createdAt);
-            }
-            const restored = persist();
+        showMessage(`«${entry.title}» удалён из каталога. `);
+        const undo = document.createElement('button');
+        undo.type = 'button';
+        undo.className = 'text-button';
+        undo.style.marginTop = '0';
+        undo.textContent = 'Отменить удаление';
+        undo.addEventListener('click', () => {
+          const nextEntries = entries.some(item => item.id === entry.id) ? entries
+            : [...entries, entry].sort((a, b) => b.createdAt - a.createdAt);
+          if (persist(nextEntries, 'Не удалось восстановить карточку. Попробуйте ещё раз.')) {
             render();
-            if (restored) showMessage(`«${entry.title}» восстановлен.`);
-          });
-          message.append(undo);
-        }
+            showMessage(`«${entry.title}» восстановлен.`);
+          }
+        });
+        message.append(undo);
       });
       fragment.append(card);
     }
@@ -225,35 +236,83 @@
       const cards = [...list.children];
       const nextCard = cards.find(card => card.dataset.id === focusedId)
         || cards[Math.min(focusedIndex, cards.length - 1)];
-      if (nextCard) nextCard.querySelector('.entry-favorite').focus();
-      else document.querySelector('[data-view="favorites"]').focus();
+      if (nextCard) nextCard.querySelector(focusSelector).focus();
+      else document.querySelector(`[data-view="${view}"]`).focus();
     }
   }
+
+  function seasonLabel(count) {
+    const lastTwo = count % 100;
+    const last = count % 10;
+    const word = lastTwo >= 11 && lastTwo <= 14 ? 'сезонов'
+      : last === 1 ? 'сезон' : last >= 2 && last <= 4 ? 'сезона' : 'сезонов';
+    return `${count} ${word}`;
+  }
+
+  const validatedFields = ['title', 'category', 'year', 'catalog-rating', 'duration'];
+
+  function setFieldError(id, text = '') {
+    const input = document.querySelector(`#${id}`);
+    const error = document.querySelector(`#${id}-error`);
+    input.setAttribute('aria-invalid', String(Boolean(text)));
+    error.textContent = text;
+    error.hidden = !text;
+  }
+
+  function updateDurationUnit() {
+    const seasons = document.querySelector('#category').value === 'Сериал';
+    document.querySelector('#duration-unit').textContent = seasons ? 'В сезонах' : 'В минутах';
+    document.querySelector('#duration').placeholder = seasons ? '2' : '120';
+    const value = document.querySelector('#duration').value.trim();
+    if (value) setFieldError('duration', /^[1-9]\d{0,3}$/.test(value) ? '' : 'Введите целое число от 1 до 9999');
+  }
+  document.querySelector('#category').addEventListener('change', updateDurationUnit);
+  for (const id of validatedFields) {
+    document.querySelector(`#${id}`).addEventListener('input', () => setFieldError(id));
+  }
+  updateDurationUnit();
 
   form.addEventListener('submit', event => {
     event.preventDefault();
     const values = new FormData(form);
-    const title = String(values.get('title')).trim();
-    if (!title) {
-      showMessage('Введите название тайтла.', true);
-      document.querySelector('#title').focus();
+    const title = String(values.get('title') || '').trim();
+    const category = String(values.get('category') || '');
+    const year = String(values.get('year') || '').trim();
+    const rawRating = String(values.get('catalogRating') || '').trim().replace(',', '.');
+    const rawDuration = String(values.get('duration') || '').trim();
+    const errors = {
+      title: title.length >= 1 && title.length <= 160 ? '' : 'Введите название от 1 до 160 символов',
+      category: ['Фильм', 'Сериал', 'Мультфильм'].includes(category) ? '' : 'Выберите категорию из списка',
+      year: /^[1-9]\d{3}$/.test(year) ? '' : 'Введите год четырьмя цифрами от 1000 до 9999',
+      'catalog-rating': /^\d{1,2}(?:\.\d)?$/.test(rawRating) && Number(rawRating) <= 10 ? '' : 'Введите рейтинг от 0.0 до 10.0, не более одной цифры после точки',
+      duration: /^[1-9]\d{0,3}$/.test(rawDuration) ? '' : 'Введите целое число от 1 до 9999',
+    };
+    for (const id of validatedFields) setFieldError(id, errors[id]);
+    const firstError = validatedFields.find(id => errors[id]);
+    if (firstError) {
+      showMessage('Проверьте отмеченные поля.', true);
+      document.querySelector(`#${firstError}`).focus();
       return;
     }
-    entries.unshift({
+    const entry = {
       id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      title,
-      category: String(values.get('category')),
-      status: String(values.get('status')),
+      title, category, year,
+      catalogRating: Number(rawRating),
+      duration: Number(rawDuration),
+      durationUnit: category === 'Сериал' ? 'seasons' : 'minutes',
+      origin: 'user',
+      status: String(values.get('status') || 'planned'),
       rating,
-      comment: String(values.get('comment')).trim(),
+      comment: String(values.get('comment') || '').trim(),
       createdAt: Date.now(),
-    });
-    const saved = persist();
+    };
+    if (!persist([entry, ...entries], 'Не удалось сохранить карточку. Проверьте доступность хранилища браузера')) return;
     form.reset();
     setRating(null);
+    updateDurationUnit();
     setView('catalog');
     resetFilters();
-    if (saved) showMessage(`«${title}» добавлен в коллекцию.`);
+    showMessage('Карточка добавлена');
   });
 
   function resetFilters() {
