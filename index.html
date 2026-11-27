@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="monthly-summary.js" defer></script>
     <script src="app.js" defer></script>
+    <script src="kinopoisk-autofill.js" defer></script>
   </head>
   <body>
     <div class="page-shell">
@@ -82,7 +83,7 @@
           <div class="section-heading"><span class="section-number">01</span><h2 id="form-title">Что будем смотреть?</h2><span class="heading-note">Добавьте новую историю</span></div>
           <form id="title-form" novalidate>
             <div class="form-top">
-              <div class="field title-field"><label for="title">Название <span class="required">*</span></label><input id="title" name="title" placeholder="Например, Отель «Гранд Будапешт»" required maxlength="160" aria-describedby="title-error" /><span id="title-error" class="field-error" hidden></span></div>
+              <div class="field title-field"><label for="title">Название <span class="required">*</span></label><input id="title" name="title" placeholder="Например, Отель «Гранд Будапешт»" required maxlength="160" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="title-suggestions" aria-describedby="title-error title-lookup-status" /><span id="title-error" class="field-error" hidden></span><ul id="title-suggestions" class="title-suggestions" role="listbox" aria-label="Найденные произведения" hidden></ul><span id="title-lookup-status" class="lookup-status" role="status" aria-live="polite"></span><a id="title-source" class="lookup-source" target="_blank" rel="noopener noreferrer" hidden>Данные Кинопоиска через ПоискКино</a></div>
               <div class="field"><label for="category">Категория <span class="required">*</span></label><select id="category" name="category" required aria-describedby="category-error"><option>Фильм</option><option>Сериал</option><option>Мультфильм</option></select><span id="category-error" class="field-error" hidden></span></div>
               <fieldset class="field status-field"><legend>Статус</legend><div class="status-control"><label><input type="radio" name="status" value="planned" checked /><span>Хочу посмотреть</span></label><label><input type="radio" name="status" value="watched" /><span>Посмотрел</span></label></div></fieldset>
             </div>
