@@ -24,6 +24,12 @@
   updateMotion();
 
   const STORAGE_KEY = 'kadr.watchlist.v1';
+  const FAVORITES_KEY = 'kadr.favorites.v1';
+  const favoritesMessage = document.querySelector('#favorites-message');
+  const searchInput = document.querySelector('#catalog-search');
+  let favoriteIds = new Set();
+  let view = 'catalog';
+  let searchQuery = '';
   const categories = ['Фильм', 'Сериал', 'Мультфильм', 'Другое'];
   const form = document.querySelector('#title-form');
   const list = document.querySelector('#collection-list');
@@ -70,6 +76,35 @@
     }
   }
 
+  function parseFavorites(value) {
+    try {
+      const saved = JSON.parse(value || '[]');
+      return new Set(Array.isArray(saved) ? saved.filter(id => typeof id === 'string') : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function favoritesWarning() {
+    favoritesMessage.textContent = 'Не удалось сохранить избранное. Изменения доступны до закрытия страницы';
+    favoritesMessage.hidden = false;
+  }
+
+  try {
+    favoriteIds = parseFavorites(localStorage.getItem(FAVORITES_KEY));
+  } catch {
+    favoritesWarning();
+  }
+
+  function persistFavorites() {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favoriteIds]));
+      favoritesMessage.hidden = true;
+    } catch {
+      favoritesWarning();
+    }
+  }
+
   function setRating(value) {
     rating = value;
     for (const button of ratingPicker.children) {
@@ -93,23 +128,33 @@
   }
 
   function render() {
+    const focusedButton = document.activeElement?.closest('.entry-favorite');
+    const oldCards = [...list.children];
+    const focusedCard = focusedButton?.closest('.entry');
+    const focusedId = focusedCard?.dataset.id;
+    const focusedIndex = oldCards.indexOf(focusedCard);
     list.replaceChildren();
-    document.querySelector('#total-count').textContent = String(entries.length);
-    const visible = entries.filter(entry => (categoryFilter === 'all' || entry.category === categoryFilter)
-      && (statusFilter === 'all' || entry.status === statusFilter));
+    const visible = entries.filter(entry => (view === 'catalog' || favoriteIds.has(entry.id))
+      && (categoryFilter === 'all' || entry.category === categoryFilter)
+      && (statusFilter === 'all' || entry.status === statusFilter)
+      && entry.title.toLocaleLowerCase('ru-RU').includes(searchQuery));
+    document.querySelector('#total-count').textContent = String(visible.length);
     empty.hidden = visible.length > 0;
-    const filtered = entries.length > 0;
-    empty.querySelector('h3').textContent = filtered ? 'Пока ничего не нашлось' : 'Здесь начнётся ваша история';
-    empty.querySelector('p').textContent = filtered
-      ? 'В этой категории и статусе пока нет тайтлов. Попробуйте изменить фильтры.'
-      : 'Добавьте первый тайтл — фильм на вечер, сериал на выходные или любимый мультфильм.';
+    const noFavorites = view === 'favorites' && !entries.some(entry => favoriteIds.has(entry.id));
+    const noEntries = entries.length === 0 && view === 'catalog';
+    empty.querySelector('h3').textContent = noFavorites ? 'В избранном пока пусто'
+      : noEntries ? 'Здесь начнётся ваша история' : 'Ничего не найдено';
+    empty.querySelector('p').textContent = noFavorites ? 'Добавляйте карточки кнопкой «В избранное»'
+      : noEntries ? 'Добавьте первый тайтл — фильм на вечер, сериал на выходные или любимый мультфильм.'
+      : 'Измените название, категорию или статус.';
     const emptyButton = document.querySelector('#first-title-button');
-    emptyButton.textContent = filtered ? 'Сбросить фильтры ↗' : 'Добавить первый тайтл ↑';
+    emptyButton.textContent = noFavorites ? 'Открыть каталог' : noEntries ? 'Добавить первый тайтл ↑' : 'Сбросить фильтры ↗';
 
     const fragment = document.createDocumentFragment();
     for (const entry of visible) {
       const card = document.querySelector('#entry-template').content.firstElementChild.cloneNode(true);
       card.dataset.category = entry.category;
+      card.dataset.id = entry.id;
       card.querySelector('.entry-title').textContent = entry.title;
       card.querySelector('.entry-category').textContent = entry.category;
       card.querySelector('.entry-date').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(entry.createdAt);
@@ -133,6 +178,19 @@
       statusButton.addEventListener('click', () => {
         entry.status = entry.status === 'watched' ? 'planned' : 'watched';
         persist();
+        render();
+      });
+      const favoriteButton = card.querySelector('.entry-favorite');
+      const isFavorite = favoriteIds.has(entry.id);
+      favoriteButton.textContent = isFavorite ? 'Убрать из избранного' : 'В избранное';
+      favoriteButton.setAttribute('aria-pressed', String(isFavorite));
+      favoriteButton.setAttribute('aria-label', `${favoriteButton.textContent}: ${entry.title}`);
+      favoriteButton.addEventListener('click', () => {
+        // Keep focus even in browsers that do not focus buttons on mouse clicks.
+        favoriteButton.focus();
+        if (favoriteIds.has(entry.id)) favoriteIds.delete(entry.id);
+        else favoriteIds.add(entry.id);
+        persistFavorites();
         render();
       });
       const deleteButton = card.querySelector('.delete-button');
@@ -163,6 +221,13 @@
       fragment.append(card);
     }
     list.append(fragment);
+    if (focusedId !== undefined) {
+      const cards = [...list.children];
+      const nextCard = cards.find(card => card.dataset.id === focusedId)
+        || cards[Math.min(focusedIndex, cards.length - 1)];
+      if (nextCard) nextCard.querySelector('.entry-favorite').focus();
+      else document.querySelector('[data-view="favorites"]').focus();
+    }
   }
 
   form.addEventListener('submit', event => {
@@ -186,6 +251,7 @@
     const saved = persist();
     form.reset();
     setRating(null);
+    setView('catalog');
     resetFilters();
     if (saved) showMessage(`«${title}» добавлен в коллекцию.`);
   });
@@ -193,6 +259,8 @@
   function resetFilters() {
     categoryFilter = 'all';
     statusFilter = 'all';
+    searchQuery = '';
+    searchInput.value = '';
     document.querySelector('#status-filter').value = 'all';
     updateCategoryButtons();
     render();
@@ -217,11 +285,38 @@
     statusFilter = event.target.value;
     render();
   });
+  function setView(nextView) {
+    view = nextView;
+    for (const button of document.querySelectorAll('[data-view]')) {
+      const active = button.dataset.view === view;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    }
+  }
+
+  document.querySelector('#collection-views').addEventListener('click', event => {
+    const button = event.target.closest('button[data-view]');
+    if (!button) return;
+    setView(button.dataset.view);
+    render();
+  });
+  searchInput.addEventListener('input', () => {
+    searchQuery = searchInput.value.trim().toLocaleLowerCase('ru-RU');
+    render();
+  });
   document.querySelector('#first-title-button').addEventListener('click', () => {
-    if (entries.length > 0) resetFilters();
+    if (view === 'favorites' && !entries.some(entry => favoriteIds.has(entry.id))) {
+      setView('catalog');
+      render();
+    } else if (entries.length > 0) resetFilters();
     else document.querySelector('#title').focus();
   });
   window.addEventListener('storage', event => {
+    if (event.key === FAVORITES_KEY || event.key === null) {
+      favoriteIds = parseFavorites(event.key === null ? null : event.newValue);
+      render();
+      if (event.key !== null) return;
+    }
     if (event.key !== STORAGE_KEY && event.key !== null) return;
     try {
       const saved = JSON.parse(event.newValue || '[]');

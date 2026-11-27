@@ -82,7 +82,7 @@
           <form id="title-form">
             <div class="form-top">
               <div class="field title-field"><label for="title">Название <span class="required">*</span></label><input id="title" name="title" placeholder="Например, Отель «Гранд Будапешт»" required maxlength="160" /></div>
-              <div class="field"><label for="category">Категория</label><select id="category" name="category"><option>Фильм</option><option>Сериал</option><option>Мультфильм</option><option>Другое</option></select></div>
+              <div class="field"><label for="category">Категория</label><select id="category" name="category"><option>Фильм</option><option>Сериал</option><option>Мультфильм</option></select></div>
               <fieldset class="field status-field"><legend>Статус</legend><div class="status-control"><label><input type="radio" name="status" value="planned" checked /><span>Хочу посмотреть</span></label><label><input type="radio" name="status" value="watched" /><span>Посмотрел</span></label></div></fieldset>
             </div>
             <div class="form-bottom">
@@ -95,14 +95,20 @@
         </section>
 
         <section class="collection" aria-labelledby="collection-title">
-          <div class="section-heading collection-heading"><span class="section-number">02</span><h2 id="collection-title">Моя коллекция</h2><span id="total-count" class="count-badge">0</span><span class="sort-note">Сначала новые <span aria-hidden="true">↓</span></span></div>
-          <div class="filter-bar"><div id="category-filters" class="category-filters" role="group" aria-label="Фильтр по категории"><button class="filter-chip active" data-category="all" type="button" aria-pressed="true">Все тайтлы</button><button class="filter-chip" data-category="Фильм" type="button" aria-pressed="false">Фильмы</button><button class="filter-chip" data-category="Сериал" type="button" aria-pressed="false">Сериалы</button><button class="filter-chip" data-category="Мультфильм" type="button" aria-pressed="false">Мультфильмы</button><button class="filter-chip" data-category="Другое" type="button" aria-pressed="false">Другое</button></div><div class="status-filter-wrap"><label for="status-filter" class="sr-only">Фильтр по статусу</label><select id="status-filter"><option value="all">Все статусы</option><option value="planned">Хочу посмотреть</option><option value="watched">Посмотрел</option></select></div></div>
+          <div class="section-heading collection-heading"><span class="section-number">02</span><h2 id="collection-title">Моя коллекция</h2><span class="found-count" role="status" aria-live="polite" aria-atomic="true">Найдено: <span id="total-count">0</span></span><span class="sort-note">Сначала новые <span aria-hidden="true">↓</span></span></div>
+          <div class="collection-views" id="collection-views" role="group" aria-label="Раздел коллекции">
+            <button type="button" class="view-button active" data-view="catalog" aria-pressed="true">Каталог</button>
+            <button type="button" class="view-button" data-view="favorites" aria-pressed="false">Избранное</button>
+          </div>
+          <div class="catalog-search"><label for="catalog-search">Поиск по названию</label><input id="catalog-search" type="search" placeholder="Введите название" maxlength="160" /></div>
+          <p id="favorites-message" class="favorites-message" role="status" hidden></p>
+          <div class="filter-bar"><div id="category-filters" class="category-filters" role="group" aria-label="Фильтр по категории"><button class="filter-chip active" data-category="all" type="button" aria-pressed="true">Все</button><button class="filter-chip" data-category="Фильм" type="button" aria-pressed="false">Фильмы</button><button class="filter-chip" data-category="Сериал" type="button" aria-pressed="false">Сериалы</button><button class="filter-chip" data-category="Мультфильм" type="button" aria-pressed="false">Мультфильмы</button></div><div class="status-filter-wrap"><label for="status-filter" class="sr-only">Фильтр по статусу</label><select id="status-filter"><option value="all">Все статусы</option><option value="planned">Хочу посмотреть</option><option value="watched">Посмотрел</option></select></div></div>
           <div id="collection-list" class="collection-list" aria-live="polite"></div>
           <div id="empty-state" class="empty-state"><div class="empty-icon" aria-hidden="true">▤<span>+</span></div><h3>Здесь начнётся ваша история</h3><p>Добавьте первый тайтл — фильм на вечер,<br />сериал на выходные или любимый мультфильм.</p><button id="first-title-button" class="text-button" type="button">Добавить первый тайтл <span aria-hidden="true">↑</span></button></div>
         </section>
       </main>
       <footer class="site-footer"><span class="footer-brand">кадр.</span><span>Жизнь слишком коротка для плохого кино.</span><span>Ваша следующая история уже ждёт <span class="footer-star">✳</span></span></footer>
     </div>
-    <template id="entry-template"><article class="entry"><div class="entry-art" aria-hidden="true"><span></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-comment"></p><button class="entry-status" type="button"></button></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить тайтл" title="Удалить тайтл">×</button></div></article></template>
+    <template id="entry-template"><article class="entry"><div class="entry-art" aria-hidden="true"><span></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-comment"></p><div class="entry-actions"><button class="entry-status" type="button"></button><button class="entry-favorite" type="button" aria-pressed="false">В избранное</button></div></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить тайтл" title="Удалить тайтл">×</button></div></article></template>
   </body>
 </html>
