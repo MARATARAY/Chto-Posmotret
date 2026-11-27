@@ -34,7 +34,7 @@ function boot(rawFavorites, options = {}) {
   const form=document.querySelector('#title-form');
   form.reset=function(){this.values={};for(const id of ['title','year','catalog-rating','duration'])document.querySelector('#'+id).value='';document.querySelector('#category').value='Фильм';this.resets=(this.resets||0)+1;};
   const FormData=class {constructor(form){this.values=form.values||{};}get(key){return this.values[key]??null;}};
-  vm.runInNewContext(source,{document,localStorage,FormData,window:{KadrMonthly:options.monthly || monthly,navigator:options.navigator,matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
+  vm.runInNewContext(source,{document,localStorage,FormData,window:{KadrOnlineSearch:options.onlineSearch,KadrMonthly:options.monthly || monthly,navigator:options.navigator,matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
   return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'title',category:'category',year:'year',catalogRating:'catalog-rating',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
 }
 // Spec 001: initialize once, preserve saved catalogs, combine search and category.
@@ -108,6 +108,16 @@ const del=boot();del.submit(valid);del.submit(valid);assert.notEqual(del.saved()
 const deletedReload=boot(del.store.get('kadr.favorites.v1'),{entries:del.saved()});deletedReload.view('favorites');assert.equal(deletedReload.count(),'0');
 del.ids['#form-message'].children[0].click();assert.equal(del.count(),'1');assert.equal(del.list.children[0].querySelector('.entry-favorite').attrs['aria-pressed'],'true');
 const safe=boot();safe.submit({...valid,title:'<script>alert(1)</script>'});assert.equal(safe.list.children[0].querySelector('.entry-title').textContent,'<script>alert(1)</script>');
+const importedCard=boot(null,{entries:[],onlineSearch:{getMetadata:()=>({tvmazeId:315,ratingSource:'TVmaze'})}});
+importedCard.submit({...valid,title:'TVmaze test',category:'Сериал'});
+assert.equal(importedCard.saved()[0].tvmazeId,315);assert.equal(importedCard.saved()[0].ratingSource,'TVmaze');
+assert.equal(importedCard.list.children[0].querySelector('.entry-source').href,'https://www.tvmaze.com/shows/315');
+assert.match(importedCard.list.children[0].querySelector('.entry-details').textContent,/Рейтинг TVmaze/);
+const importedReload=boot(null,{entries:importedCard.saved()});assert.equal(importedReload.list.children[0].querySelector('.entry-source').hidden,false);
+importedReload.list.children[0].querySelector('.delete-button').click();importedReload.ids['#form-message'].children[0].click();assert.equal(importedReload.saved()[0].tvmazeId,315);
+const manualRating=boot(null,{entries:[{...importedCard.saved()[0],ratingSource:undefined}]});assert.ok(!manualRating.list.children[0].querySelector('.entry-details').textContent.includes('Рейтинг TVmaze'));assert.equal(manualRating.list.children[0].querySelector('.entry-source').hidden,false);
+const unsafeSource=boot(null,{entries:[{...importedCard.saved()[0],tvmazeId:'javascript:alert(1)'}]});assert.equal(unsafeSource.list.children[0].querySelector('.entry-source').hidden,true);
+console.log('PASS: TVmaze metadata persists through add/reload/delete/undo, attribution and safe source URLs.');
 console.log('PASS: all new fields, decimal normalization, validation boundaries, units/plurals, legacy data, duplicate names/IDs, transactional storage failures, delete/undo/reload, favorites and literal text rendering.');
 
 function openReview(app, index=0) {

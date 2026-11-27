@@ -190,15 +190,20 @@
       card.querySelector('.entry-title').textContent = entry.title;
       card.querySelector('.entry-category').textContent = entry.category;
       card.querySelector('.entry-date').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(entry.createdAt);
+      const hasSource = Number.isSafeInteger(entry.tvmazeId) && entry.tvmazeId > 0;
+      const ratingLabel = hasSource && entry.ratingSource === 'TVmaze' ? 'Рейтинг TVmaze' : 'Рейтинг';
       const details = [];
       if (/^[1-9]\d{3}$/.test(String(entry.year ?? ''))) details.push(String(entry.year));
-      if (Number.isFinite(entry.catalogRating) && entry.catalogRating >= 0 && entry.catalogRating <= 10) details.push(`Рейтинг ${entry.catalogRating.toFixed(1)}`);
+      if (Number.isFinite(entry.catalogRating) && entry.catalogRating >= 0 && entry.catalogRating <= 10) details.push(`${ratingLabel} ${entry.catalogRating.toFixed(1)}`);
       if (Number.isInteger(entry.duration) && entry.duration > 0 && entry.duration <= 9999) {
         details.push(entry.durationUnit === 'seasons' ? seasonLabel(entry.duration) : `${entry.duration} мин`);
       }
       const detailLine = card.querySelector('.entry-details');
       detailLine.textContent = details.join(' · ');
       detailLine.hidden = details.length === 0;
+      const sourceLink = card.querySelector('.entry-source');
+      sourceLink.hidden = !hasSource;
+      if (hasSource) sourceLink.href = `https://www.tvmaze.com/shows/${entry.tvmazeId}`;
       card.querySelector('.entry-comment').textContent = entry.comment;
       card.querySelector('.entry-comment').hidden = !entry.comment;
       card.querySelector('.entry-art > span').textContent = { 'Фильм': '▶', 'Сериал': '▤', 'Мультфильм': '✳', 'Другое': '◈' }[entry.category];
@@ -555,6 +560,7 @@
       rating: personal.value,
       comment,
       createdAt: Date.now(),
+      ...(window.KadrOnlineSearch?.getMetadata?.() || {}),
     };
     if (!persist([entry, ...entries], 'Не удалось сохранить карточку. Проверьте доступность хранилища браузера')) return;
     form.reset();
