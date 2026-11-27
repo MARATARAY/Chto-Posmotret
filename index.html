@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#4a1326" />
     <title>Кадр — мой список просмотра</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="monthly-summary.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -113,10 +114,37 @@
           <div id="collection-list" class="collection-list" aria-live="polite"></div>
           <div id="empty-state" class="empty-state"><div class="empty-icon" aria-hidden="true">▤<span>+</span></div><h3>Здесь начнётся ваша история</h3><p>Добавьте первый тайтл — фильм на вечер,<br />сериал на выходные или любимый мультфильм.</p><button id="first-title-button" class="text-button" type="button">Добавить первый тайтл <span aria-hidden="true">↑</span></button></div>
         </section>
+        <section class="monthly-summary" aria-labelledby="monthly-title">
+          <div class="section-heading"><span class="section-number">03</span><h2 id="monthly-title">Итоги за месяц</h2></div>
+          <div class="monthly-period"><label for="summary-month">Месяц и год</label><input id="summary-month" type="month" aria-describedby="summary-month-error" /><p id="summary-month-error" class="monthly-error" role="alert" hidden></p></div>
+          <h3 id="monthly-period-title"></h3>
+          <p class="monthly-hint">По всему каталогу, независимо от поиска и вкладки. Учитываются записи с датой просмотра.</p>
+          <dl class="monthly-stats">
+            <div><dt>Всего просмотрено</dt><dd id="monthly-total">0</dd></div>
+            <div><dt>Фильмы</dt><dd id="monthly-films">0</dd></div>
+            <div><dt>Сериалы</dt><dd id="monthly-series">0</dd></div>
+            <div><dt>Мультфильмы</dt><dd id="monthly-cartoons">0</dd></div>
+          </dl>
+          <p id="monthly-empty" hidden>В этом месяце нет просмотренных записей с указанной датой</p>
+          <h4>Популярные категории</h4><ol id="monthly-top"></ol><p id="monthly-top-empty" hidden>Нет данных</p>
+          <p id="monthly-previous"></p><p id="monthly-comparison"></p>
+          <p id="monthly-current" class="monthly-hint" hidden>Месяц ещё не завершён: сравнение с полным предыдущим месяцем</p>
+          <p id="monthly-undated" class="monthly-warning" hidden></p>
+          <p id="monthly-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+          <button id="copy-monthly-report" class="summary-copy" type="button">Скопировать отчёт</button>
+          <p id="monthly-copy-status" role="status" aria-live="polite"></p>
+          <div id="monthly-copy-fallback" hidden><label for="monthly-report">Текст отчёта</label><textarea id="monthly-report" readonly rows="14" aria-describedby="monthly-copy-status"></textarea></div>
+        </section>
       </main>
       <footer class="site-footer"><span class="footer-brand">кадр.</span><span>Жизнь слишком коротка для плохого кино.</span><span>Ваша следующая история уже ждёт <span class="footer-star">✳</span></span></footer>
     </div>
     <template id="entry-template"><article class="entry"><div class="entry-art" aria-hidden="true"><span></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-details" hidden></p><p class="entry-comment"></p><div class="entry-actions"><button class="entry-status" type="button"></button><button class="entry-favorite" type="button" aria-pressed="false">В избранное</button><button class="entry-review-toggle" type="button" aria-expanded="false">Оценка и заметка</button></div></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить карточку" title="Удалить карточку">×</button></div></article></template>
+    <template id="watched-date-template">
+      <form class="watched-date-form" novalidate hidden>
+        <div class="field"><label class="watched-date-label">Дата просмотра</label><input class="watched-date-input" type="date" required /><span class="watched-date-hint"></span><span class="watched-date-error" role="alert" hidden></span></div>
+        <button class="watched-date-save" type="submit">Сохранить дату</button>
+      </form>
+    </template>
     <template id="review-template">
       <form class="review-editor" novalidate hidden>
         <div class="field"><label class="review-rating-label">Ваша оценка <span class="optional">необязательно</span></label><input class="review-rating-input" name="reviewRating" type="text" inputmode="decimal" placeholder="От 1.0 до 10.0" /><span class="review-hint">Чтобы оценить, отметьте как просмотренное</span><span class="review-rating-error" hidden></span></div>

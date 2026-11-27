@@ -41,6 +41,12 @@
   let storageAvailable = true;
   let editingId = null;
   const reviewDrafts = new Map();
+  const dateDrafts = new Map();
+  const monthly = window.KadrMonthly;
+  const summaryMonth = document.querySelector('#summary-month');
+  let selectedMonth = monthly.today().slice(0, 7);
+  let reportText = '';
+  let reportVersion = 0;
 
   function isEntry(entry) {
     return entry && typeof entry.id === 'string' && typeof entry.title === 'string'
@@ -125,8 +131,8 @@
   }
 
   function render() {
-    const focusedButton = document.activeElement?.closest('.entry-favorite, .delete-button, .entry-review-toggle, .entry-status');
-    const focusSelector = ['delete-button', 'entry-review-toggle', 'entry-status']
+    const focusedButton = document.activeElement?.closest('.entry-favorite, .delete-button, .entry-review-toggle, .entry-status, .watched-date-save');
+    const focusSelector = ['delete-button', 'entry-review-toggle', 'entry-status', 'watched-date-save']
       .find(name => focusedButton?.classList.contains(name));
     const focusAction = focusSelector ? `.${focusSelector}` : '.entry-favorite';
     const oldCards = [...list.children];
@@ -192,8 +198,13 @@
       statusButton.title = entry.status === 'watched' ? 'Переместить в «Хочу посмотреть»' : 'Отметить как просмотренное';
       statusButton.addEventListener('click', () => {
         statusButton.focus();
-        const nextEntries = entries.map(item => item.id === entry.id
-          ? { ...item, status: item.status === 'watched' ? 'planned' : 'watched' } : item);
+        const nextEntries = entries.map(item => {
+          if (item.id !== entry.id) return item;
+          const status = item.status === 'watched' ? 'planned' : 'watched';
+          const watchedOn = status === 'watched' && !monthly.isWatchedOn(item.watchedOn)
+            ? monthly.today() : item.watchedOn;
+          return { ...item, status, ...(watchedOn !== undefined ? { watchedOn } : {}) };
+        });
         if (persist(nextEntries)) render();
       });
       const favoriteButton = card.querySelector('.entry-favorite');
@@ -210,6 +221,7 @@
         render();
       });
       attachReviewEditor(card, entry);
+      attachWatchedDate(card, entry);
       const deleteButton = card.querySelector('.delete-button');
       deleteButton.setAttribute('aria-label', `Удалить карточку «${entry.title}»`);
       deleteButton.hidden = entry.origin === 'builtin';
@@ -220,6 +232,7 @@
         if (!saved) return;
         if (editingId === entry.id) editingId = null;
         reviewDrafts.delete(entry.id);
+        dateDrafts.delete(entry.id);
         render();
         showMessage(`«${entry.title}» удалён из каталога. `);
         const undo = document.createElement('button');
@@ -246,6 +259,94 @@
         || cards[Math.min(focusedIndex, cards.length - 1)];
       if (nextCard) nextCard.querySelector(focusAction).focus();
       else document.querySelector(`[data-view="${view}"]`).focus();
+    }
+    renderMonthlySummary();
+  }
+
+  function attachWatchedDate(card, entry) {
+    const editor = document.querySelector('#watched-date-template').content.firstElementChild.cloneNode(true);
+    const input = editor.querySelector('.watched-date-input');
+    const hint = editor.querySelector('.watched-date-hint');
+    const error = editor.querySelector('.watched-date-error');
+    const save = editor.querySelector('.watched-date-save');
+    const valid = monthly.isWatchedOn(entry.watchedOn);
+    const id = `watched-date-${entry.id}`;
+    editor.hidden = entry.status !== 'watched';
+    input.id = id;
+    input.max = monthly.today();
+    input.value = dateDrafts.get(entry.id) ?? (valid ? entry.watchedOn : '');
+    hint.id = `${id}-hint`;
+    error.id = `${id}-error`;
+    editor.querySelector('.watched-date-label').setAttribute('for', id);
+    input.setAttribute('aria-describedby', `${hint.id} ${error.id}`);
+    save.setAttribute('aria-label', `Сохранить дату просмотра: ${entry.title}`);
+    hint.textContent = valid ? `Учтено: ${entry.watchedOn.split('-').reverse().join('.')}`
+      : 'Дата просмотра не указана. Запись не включена в итоги за месяц.';
+    input.addEventListener('input', () => {
+      dateDrafts.set(entry.id, input.value);
+      input.setAttribute('aria-invalid', 'false');
+      error.hidden = true;
+    });
+    editor.addEventListener('submit', event => {
+      event.preventDefault();
+      dateDrafts.set(entry.id, input.value);
+      if (!monthly.isWatchedOn(input.value)) {
+        error.textContent = 'Укажите существующую дату не позже сегодняшнего дня';
+        error.hidden = false;
+        input.setAttribute('aria-invalid', 'true');
+        input.focus();
+        return;
+      }
+      const current = entries.find(item => item.id === entry.id);
+      if (!current || current.status !== 'watched') return;
+      const nextEntries = entries.map(item => item.id === entry.id ? { ...item, watchedOn: input.value } : item);
+      const errorText = 'Не удалось сохранить дату просмотра. Попробуйте ещё раз.';
+      if (!persist(nextEntries, errorText)) {
+        error.textContent = errorText;
+        error.hidden = false;
+        return;
+      }
+      dateDrafts.delete(entry.id);
+      save.focus();
+      render();
+      showMessage('Дата просмотра сохранена');
+    });
+    card.querySelector('.entry-body').append(editor);
+  }
+
+  function renderMonthlySummary() {
+    const today = monthly.today();
+    summaryMonth.max = today.slice(0, 7);
+    const summary = monthly.summarize(entries, selectedMonth, today);
+    document.querySelector('#monthly-period-title').textContent = summary.title;
+    document.querySelector('#monthly-total').textContent = String(summary.total);
+    document.querySelector('#monthly-films').textContent = String(summary.counts['Фильм']);
+    document.querySelector('#monthly-series').textContent = String(summary.counts['Сериал']);
+    document.querySelector('#monthly-cartoons').textContent = String(summary.counts['Мультфильм']);
+    document.querySelector('#monthly-empty').hidden = summary.total !== 0;
+    document.querySelector('#monthly-top-empty').hidden = summary.top.length !== 0;
+    const top = document.querySelector('#monthly-top');
+    top.replaceChildren();
+    for (const item of summary.top) {
+      const row = document.createElement('li');
+      row.textContent = `${item.label} — ${item.count}`;
+      top.append(row);
+    }
+    const delta = monthly.comparison(summary.difference);
+    document.querySelector('#monthly-previous').textContent = `${summary.previousTitle}: ${summary.previousTotal}`;
+    document.querySelector('#monthly-comparison').textContent = delta;
+    document.querySelector('#monthly-current').hidden = !summary.current;
+    const warning = document.querySelector('#monthly-undated');
+    warning.hidden = summary.undated === 0;
+    warning.textContent = `Просмотренных без корректной даты: ${summary.undated}. Во всём каталоге; эти записи не включены в итоги и сравнение.`;
+    const nextReport = monthly.report(summary);
+    if (nextReport !== reportText) {
+      reportText = nextReport;
+      reportVersion++;
+      document.querySelector('#monthly-copy-status').textContent = '';
+      document.querySelector('#monthly-copy-fallback').hidden = true;
+      document.querySelector('#monthly-report').value = reportText;
+      document.querySelector('#monthly-announcement').textContent = `${summary.title}. Всего просмотрено: ${summary.total}. ${delta}. Без корректной даты: ${summary.undated}.`;
     }
   }
 
@@ -430,6 +531,7 @@
       durationUnit: category === 'Сериал' ? 'seasons' : 'minutes',
       origin: 'user',
       status,
+      ...(status === 'watched' ? { watchedOn: monthly.today() } : {}),
       rating: personal.value,
       comment,
       createdAt: Date.now(),
@@ -513,6 +615,51 @@
         render();
       }
     } catch { /* Keep the current list if another tab writes invalid data. */ }
+  });
+
+  summaryMonth.value = selectedMonth;
+  summaryMonth.addEventListener('change', () => {
+    const value = summaryMonth.value;
+    const error = document.querySelector('#summary-month-error');
+    if (!monthly.isMonth(value) || value > monthly.today().slice(0, 7)) {
+      error.textContent = 'Выберите текущий или прошедший месяц с годом из четырёх цифр';
+      error.hidden = false;
+      summaryMonth.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    selectedMonth = value;
+    error.hidden = true;
+    summaryMonth.setAttribute('aria-invalid', 'false');
+    renderMonthlySummary();
+  });
+  document.querySelector('#copy-monthly-report').addEventListener('click', async () => {
+    // Snapshot the report at the click, including when clipboard permission takes time.
+    const text = reportText;
+    const version = reportVersion;
+    const button = document.querySelector('#copy-monthly-report');
+    const status = document.querySelector('#monthly-copy-status');
+    button.disabled = true;
+    status.textContent = '';
+    try {
+      const clipboard = window.navigator?.clipboard;
+      if (!clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await clipboard.writeText(text);
+      if (version === reportVersion) {
+        document.querySelector('#monthly-copy-fallback').hidden = true;
+        status.textContent = 'Отчёт скопирован';
+      }
+    } catch {
+      if (version === reportVersion) {
+        const output = document.querySelector('#monthly-report');
+        output.value = text;
+        document.querySelector('#monthly-copy-fallback').hidden = false;
+        status.textContent = 'Скопируйте текст вручную: Ctrl+C или Command+C. На телефоне выделите текст и выберите «Скопировать».';
+        output.focus();
+        output.select();
+      }
+    } finally {
+      button.disabled = false;
+    }
   });
 
   render();

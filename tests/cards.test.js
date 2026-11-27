@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
+const monthly = require('../monthly-summary.js');
 const source = fs.readFileSync(require('node:path').join(__dirname, '..', 'app.js'), 'utf8');
 function boot(rawFavorites, options = {}) {
   let document;
@@ -13,6 +14,7 @@ function boot(rawFavorites, options = {}) {
     replaceChildren() { this.children=[]; }
     closest(s) {return s.split(', ').includes(this.kind) || (s==='button[data-view]' && this.dataset.view) || (s==='button[data-category]' && this.dataset.category) ? this : this.parent?.closest(s);}
     focus() {document.activeElement=this;}
+    select() {this.selected=true;}
     click() {this.handlers.click?.({target:this});}
   }
   const ids={}; document={activeElement:null,body:new El(),querySelector(s){return ids[s] ||= new El(s);},querySelectorAll(s){if(s==='[data-view]')return views;if(s==='[data-category].filter-chip')return cats;return [];},createElement(){return new El();},createDocumentFragment(){return new El('fragment');}};
@@ -23,6 +25,7 @@ function boot(rawFavorites, options = {}) {
   ids['[data-view="best"]']=views[2];
   document.querySelector('#entry-template').content={firstElementChild:{cloneNode(){const e=new El('.entry'); e.querySelector('.entry-favorite').kind='.entry-favorite';return e;}}};
   document.querySelector('#review-template').content={firstElementChild:{cloneNode(){return new El('.review-editor');}}};
+  document.querySelector('#watched-date-template').content={firstElementChild:{cloneNode(){return new El('.watched-date-form');}}};
   const entries=[['a','Одинаковое имя','Фильм'],['b','Одинаковое имя','Сериал'],['c','Мультфильм','Мультфильм']].map(([id,title,category],i)=>({id,title,category,status:'planned',rating:8,comment:'text',createdAt:1000-i}));
   const store=new Map([['kadr.watchlist.v1',JSON.stringify(options.entries || entries)],['kadr.favorites.v1',rawFavorites ?? '[]'],['unrelated','keep']]);
   const events={};const localStorage={getItem(k){if(options.blockRead)throw Error('denied');return store.get(k)??null;},setItem(k,v){if(options.blockWrite)throw Error('quota');store.set(k,v);}};
@@ -30,7 +33,7 @@ function boot(rawFavorites, options = {}) {
   const form=document.querySelector('#title-form');
   form.reset=function(){this.values={};for(const id of ['title','year','catalog-rating','duration'])document.querySelector('#'+id).value='';document.querySelector('#category').value='Фильм';this.resets=(this.resets||0)+1;};
   const FormData=class {constructor(form){this.values=form.values||{};}get(key){return this.values[key]??null;}};
-  vm.runInNewContext(source,{document,localStorage,FormData,window:{matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
+  vm.runInNewContext(source,{document,localStorage,FormData,window:{KadrMonthly:options.monthly || monthly,navigator:options.navigator,matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
   return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'title',category:'category',year:'year',catalogRating:'catalog-rating',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
 }
 const t=boot();const watch=t.store.get('kadr.watchlist.v1');assert.equal(t.count(),'3');
@@ -116,3 +119,52 @@ const createInvalid=boot();createInvalid.submit({...valid,status:'watched',perso
 console.log('PASS: review edit/cancel/clear, decimals and boundaries, notes and literal markup, storage failure drafts, legacy scores, watched-only ratings, best threshold/sort/ties/filters/status/undo, catalog/favorites preservation and focus.');
 const createAccess=boot();assert.equal(createAccess.ids['#personal-rating'].disabled,true);createAccess.ids['#title-form'].values={status:'watched'};createAccess.ids['#title-form'].handlers.change();assert.equal(createAccess.ids['#personal-rating'].disabled,false);createAccess.ids['#title-form'].values={status:'planned'};createAccess.ids['#title-form'].handlers.change();assert.equal(createAccess.ids['#personal-rating'].disabled,true);
 console.log('PASS: create-form personal rating enables only for watched status.');
+
+// Monthly summaries use local calendar dates, independently of the catalog view.
+const fixedToday='2026-11-27';
+const fixedMonthly={...monthly,today:()=>fixedToday,isWatchedOn:value=>monthly.isWatchedOn(value,fixedToday)};
+assert.equal(monthly.today({getFullYear:()=>2027,getMonth:()=>0,getDate:()=>1}),'2027-01-01');
+assert.equal(monthly.previousMonth('2027-01'),'2026-12');
+for(const [date,expected] of [['2024-02-29',true],['2026-02-29',false],['1900-02-29',false],['2000-02-29',true],['2026-04-31',false],['2026-11-00',false],['2026-13-01',false]])assert.equal(monthly.isCalendarDate(date),expected,date);
+assert.equal(monthly.isWatchedOn('2026-11-28',fixedToday),false);
+const dated=(id,category,watchedOn,status='watched')=>({id,title:'Private title',category,watchedOn,status,createdAt:1,rating:9,comment:'Private note',duration:5,durationUnit:'seasons'});
+const monthEntries=[dated('f1','Фильм','2026-11-01'),dated('f2','Фильм','2026-11-27'),dated('s','Сериал','2026-11-12'),dated('c','Мультфильм','2026-11-13'),dated('old','Фильм','2026-10-31'),dated('unknown','Фильм',undefined),dated('bad','Сериал','2026-02-30'),dated('future','Фильм','2026-12-01'),dated('other','Другое','2026-11-01'),dated('planned','Фильм','2026-11-01','planned')];
+const monthSnapshot=JSON.stringify(monthEntries);
+const stats=monthly.summarize(monthEntries,'2026-11',fixedToday);
+assert.equal(stats.total,4);assert.equal(stats.previousTotal,1);assert.equal(stats.difference,3);assert.equal(stats.undated,3);assert.equal(stats.current,true);assert.deepEqual(Array.from(stats.top,x=>x.category),['Фильм','Сериал','Мультфильм']);assert.equal(JSON.stringify(monthEntries),monthSnapshot);
+assert.equal(monthly.summarize(monthEntries,'2026-10',fixedToday).current,false);
+const emptySummary=monthly.summarize([],'2026-10',fixedToday);assert.equal(emptySummary.total,0);assert.equal(emptySummary.difference,0);assert.equal(emptySummary.top.length,0);
+assert.match(monthly.comparison(-3),/На 3 меньше/);assert.match(monthly.comparison(0),/Столько же/);
+assert.equal(monthly.summarize([dated('jan','Фильм','2027-01-01'),dated('dec','Фильм','2026-12-31')],'2027-01','2027-01-10').previousTotal,1);
+assert.throws(()=>monthly.summarize([],'2026-12',fixedToday));
+const report=monthly.report(stats);assert.match(report,/Всего просмотрено: 4/);assert.match(report,/Октябрь 2026: 1/);assert.match(report,/Месяц ещё не завершён/);assert.match(report,/без корректной даты: 3/);assert.ok(!report.includes('Private'));assert.ok(!monthly.report(emptySummary).includes('Месяц ещё не завершён'));
+const summaryApp=boot('["f1"]',{entries:monthEntries,monthly:fixedMonthly});
+const total=()=>summaryApp.ids['#monthly-total'].textContent;
+assert.equal(total(),'4');assert.equal(summaryApp.saved().find(x=>x.id==='unknown').watchedOn,undefined);
+summaryApp.search('missing');summaryApp.category('Сериал');summaryApp.view('favorites');assert.equal(total(),'4');assert.equal(summaryApp.count(),'0');
+function changeMonth(app,value){app.ids['#summary-month'].value=value;app.ids['#summary-month'].handlers.change();}
+changeMonth(summaryApp,'2026-10');assert.equal(total(),'1');assert.equal(summaryApp.ids['#catalog-search'].value,'missing');
+changeMonth(summaryApp,'2026-12');assert.equal(total(),'1');assert.equal(summaryApp.ids['#summary-month-error'].hidden,false);
+changeMonth(summaryApp,'2026-11');summaryApp.view('catalog');summaryApp.category('all');summaryApp.search('');
+function dateForm(app,id){return app.list.children.find(x=>x.dataset.id===id).querySelector('.entry-body').children.find(x=>x.kind==='.watched-date-form');}
+function saveDate(app,id,value){const form=dateForm(app,id);const input=form.querySelector('.watched-date-input');input.value=value;input.handlers.input();form.handlers.submit({preventDefault(){}});return form;}
+for(const invalid of ['', '2026-02-30','2026-11-28']){const before=summaryApp.store.get('kadr.watchlist.v1');const form=saveDate(summaryApp,'unknown',invalid);assert.equal(summaryApp.store.get('kadr.watchlist.v1'),before);assert.equal(form.querySelector('.watched-date-error').hidden,false);}
+saveDate(summaryApp,'unknown','2026-11-02');assert.equal(total(),'5');assert.equal(summaryApp.saved().find(x=>x.id==='unknown').watchedOn,'2026-11-02');
+saveDate(summaryApp,'unknown','2026-10-02');assert.equal(total(),'4');assert.equal(summaryApp.ids['#monthly-previous'].textContent,'Октябрь 2026: 2');
+const toggleUnknown=()=>summaryApp.list.children.find(x=>x.dataset.id==='unknown').querySelector('.entry-status').click();toggleUnknown();assert.equal(summaryApp.saved().find(x=>x.id==='unknown').watchedOn,'2026-10-02');assert.equal(summaryApp.ids['#monthly-previous'].textContent,'Октябрь 2026: 1');toggleUnknown();assert.equal(summaryApp.ids['#monthly-previous'].textContent,'Октябрь 2026: 2');
+summaryApp.list.children.find(x=>x.dataset.id==='planned').querySelector('.entry-status').click();assert.equal(total(),'5');assert.equal(summaryApp.saved().find(x=>x.id==='planned').watchedOn,'2026-11-01');
+summaryApp.submit({...valid,status:'watched'});assert.equal(summaryApp.saved()[0].watchedOn,fixedToday);assert.equal(total(),'6');
+summaryApp.list.children[0].querySelector('.delete-button').click();assert.equal(total(),'5');summaryApp.ids['#form-message'].children[0].click();assert.equal(total(),'6');
+const reloadedSummary=boot(null,{entries:summaryApp.saved(),monthly:fixedMonthly});assert.equal(reloadedSummary.ids['#monthly-total'].textContent,'6');
+summaryApp.events.storage({key:'kadr.watchlist.v1',newValue:JSON.stringify([dated('sync','Фильм','2026-11-05')])});assert.equal(total(),'1');
+const failedDate=boot(null,{entries:[dated('u','Фильм',undefined)],monthly:fixedMonthly,blockWrite:true});const failedForm=saveDate(failedDate,'u','2026-11-02');assert.equal(failedDate.saved()[0].watchedOn,undefined);assert.equal(failedDate.ids['#monthly-total'].textContent,'0');assert.equal(failedForm.querySelector('.watched-date-input').value,'2026-11-02');assert.equal(failedForm.querySelector('.watched-date-error').hidden,false);
+const firstWatch=boot(null,{monthly:fixedMonthly});firstWatch.list.children[0].querySelector('.entry-status').click();assert.equal(firstWatch.saved()[0].watchedOn,fixedToday);
+console.log('PASS: monthly totals/categories/ties/zeros, local dates/leap years/January, undated legacy entries, filters independence, validation, date/status/create/delete/undo/reload/storage updates and failed-save drafts.');
+(async()=>{
+  const copy=app=>app.ids['#copy-monthly-report'].handlers.click();
+  let resolveCopy,copied='';const asyncCopy=boot(null,{entries:[],monthly:fixedMonthly,navigator:{clipboard:{writeText(text){copied=text;return new Promise(resolve=>{resolveCopy=resolve;});}}}});
+  assert.equal(copied,'');const pending=copy(asyncCopy);assert.match(copied,/Всего просмотрено: 0/);assert.equal(asyncCopy.ids['#monthly-copy-status'].textContent,'');assert.equal(asyncCopy.ids['#copy-monthly-report'].disabled,true);resolveCopy();await pending;assert.equal(asyncCopy.ids['#monthly-copy-status'].textContent,'Отчёт скопирован');assert.equal(asyncCopy.ids['#copy-monthly-report'].disabled,false);
+  const pendingStale=copy(asyncCopy);changeMonth(asyncCopy,'2026-10');resolveCopy();await pendingStale;assert.equal(asyncCopy.ids['#monthly-copy-status'].textContent,'');
+  for(const navigator of [undefined,{clipboard:{writeText:async()=>{throw Error('denied');}}}]){const fallback=boot(null,{entries:monthEntries,monthly:fixedMonthly,navigator});await copy(fallback);assert.equal(fallback.ids['#monthly-copy-fallback'].hidden,false);assert.equal(fallback.ids['#monthly-report'].value,report);assert.equal(fallback.ids['#monthly-report'].selected,true);assert.equal(fallback.document.activeElement,fallback.ids['#monthly-report']);assert.match(fallback.ids['#monthly-copy-status'].textContent,/Ctrl\+C или Command\+C/);changeMonth(fallback,'2026-10');assert.equal(fallback.ids['#monthly-copy-fallback'].hidden,true);}
+  console.log('PASS: clipboard success awaits confirmation, zero reports, unavailable/denied clipboard manual fallback, selection/focus and stale-period completion protection.');
+})();

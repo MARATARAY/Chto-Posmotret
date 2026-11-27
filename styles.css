@@ -141,4 +141,16 @@ input:not([type="radio"]),select,textarea,.status-control label,.status-control 
 .view-button[aria-pressed="true"]{background:#f2d3a0;color:#42192a;border-color:#f2d3a0}
 .view-button[aria-pressed="false"]{background:#32121e;color:#ffe9d2;border-color:#bb8b5b}
 .form-panel input:disabled{opacity:.65;cursor:not-allowed}
+.monthly-summary{margin-top:36px;padding:28px;border:1px solid #bd945b;border-radius:16px;background:#2d101de8;color:#fff0df;min-width:0}
+.monthly-summary h3{font-size:24px;margin:24px 0 12px}.monthly-summary h4{font-size:16px;margin:24px 0 10px}
+.monthly-period{display:grid;gap:8px;max-width:300px}.monthly-period label,#monthly-copy-fallback label{font-size:14px;color:#ffe1ac}
+.monthly-summary input,.monthly-summary textarea,.watched-date-input{box-sizing:border-box;min-width:0;width:100%;max-width:100%;min-height:44px;padding:10px;border:1px solid #bd945b;border-radius:6px;background:#421b2b;color:#fff3ec;font:inherit;color-scheme:dark}
+.monthly-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:24px 0}.monthly-stats div{padding:16px 12px;border:1px solid #bd945b70;border-radius:8px;background:#4a203280}.monthly-stats dt{font-size:12px;line-height:1.6}.monthly-stats dd{margin:8px 0 0;color:#ffe1ac;font-size:30px}
+.monthly-hint,.watched-date-hint{font-size:12px;line-height:1.7;color:#e1c2c9}.monthly-warning,.monthly-error,.watched-date-error{font-size:12px;line-height:1.7;color:#ffcfac;overflow-wrap:anywhere}
+#monthly-top{padding-left:24px;line-height:1.9}#monthly-comparison{font-weight:600;color:#ffe1ac}#monthly-copy-status{font-size:13px;line-height:1.7}
+.summary-copy,.watched-date-save{min-height:44px;min-width:44px;padding:10px 16px;border:1px solid #c79b5c;border-radius:6px;background:#f2d3a0;color:#42192a;font:inherit;font-size:13px}.summary-copy:disabled{opacity:.65}
+#monthly-copy-fallback{margin-top:16px}#monthly-report{display:block;margin-top:10px;min-height:260px;resize:vertical;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.7}
+.watched-date-form{margin-top:16px;padding:14px;border:1px solid #bd945b70;border-radius:8px;display:grid;gap:12px;min-width:0}.watched-date-label{color:#ffe1ac!important;font-size:12px}.watched-date-save{justify-self:start}.watched-date-input{font-size:14px}
+.monthly-summary [aria-invalid="true"],.watched-date-form [aria-invalid="true"]{border:2px solid #ffc0ad}
+@media(max-width:600px){.monthly-summary{padding:18px 14px}.monthly-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.monthly-stats div{padding:12px 8px}.monthly-stats dd{font-size:26px}.monthly-period{max-width:100%}.summary-copy{width:100%}.watched-date-form{padding:10px}.watched-date-save{width:100%}}
 @media(max-width:600px){.view-button{flex:1 1 90px;padding:10px 12px}.entry-review-toggle{font-size:11px}.review-editor{padding:13px}.review-actions button{flex:1}.entry-rating{max-width:none}}
