@@ -40,7 +40,8 @@
     return `${months[month - 1]} ${year}`;
   }
 
-  function comparison(difference) {
+  function comparison(difference, previousTotal) {
+    if (previousTotal === 0) return 'В прошлом месяце записей не было';
     if (difference > 0) return `На ${difference} больше, чем в прошлом месяце`;
     if (difference < 0) return `На ${Math.abs(difference)} меньше, чем в прошлом месяце`;
     return 'Столько же, сколько в прошлом месяце';
@@ -71,12 +72,16 @@
   }
 
   function report(summary) {
-    const lines = [`Кадр — итоги за ${summary.title.toLocaleLowerCase('ru-RU')}`,
-      'По записям с указанной датой просмотра.', `Всего просмотрено: ${summary.total}`,
-      ...categories.map(category => `${labels[category]}: ${summary.counts[category]}`),
-      'Популярные категории:',
+    const delta = comparison(summary.difference, summary.previousTotal);
+    const total = summary.previousTotal > 0
+      ? `Всего просмотрено: ${summary.total} (${delta.toLocaleLowerCase('ru-RU')})`
+      : `Всего просмотрено: ${summary.total}`;
+    const lines = [`🎬 Мои итоги просмотра за ${summary.title}:`, total, 'Топ категорий:',
       ...(summary.top.length ? summary.top.map((item, index) => `${index + 1}. ${item.label} — ${item.count}`) : ['Нет данных']),
-      `${summary.previousTitle}: ${summary.previousTotal}`, `${comparison(summary.difference)}.`];
+      `${summary.previousTitle}: ${summary.previousTotal}`];
+    if (summary.previousTotal === 0) lines.push(delta);
+    if (summary.total === 0) lines.push('В этом месяце вы ещё ничего не отметили как просмотренное');
+    lines.push('По записям с указанной датой просмотра.');
     if (summary.current) lines.push('Месяц ещё не завершён: сравнение с полным предыдущим месяцем.');
     if (summary.undated) lines.push(`Просмотренных без корректной даты: ${summary.undated}. Эти записи не включены в итоги и сравнение.`);
     return lines.join('\n');

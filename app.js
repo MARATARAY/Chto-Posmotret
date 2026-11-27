@@ -58,8 +58,27 @@
   }
 
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    if (Array.isArray(saved)) entries = saved.filter(isEntry).sort((a, b) => b.createdAt - a.createdAt);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === null) {
+      // Seed only a new catalog; an explicitly saved empty list stays empty.
+      entries = [
+        ['inception', 'Начало', 'Фильм', '2010', 8.7, 148],
+        ['interstellar', 'Интерстеллар', 'Фильм', '2014', 8.6, 169],
+        ['sherlock', 'Шерлок', 'Сериал', '2010', 8.9, 4],
+        ['planet-earth', 'Планета Земля', 'Сериал', '2006', 9.4, 1],
+        ['coco', 'Тайна Коко', 'Мультфильм', '2017', 8.6, 105],
+        ['ratatouille', 'Рататуй', 'Мультфильм', '2007', 8.1, 111]
+      ].map(([id, title, category, year, catalogRating, duration], index) => ({
+        id: `starter-${id}`, title, category, year, catalogRating, duration,
+        durationUnit: category === 'Сериал' ? 'seasons' : 'minutes',
+        status: 'planned', rating: null, comment: '', origin: 'starter',
+        createdAt: Date.UTC(2026, 0, 1) - index
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    } else {
+      const saved = JSON.parse(raw);
+      if (Array.isArray(saved)) entries = saved.filter(isEntry).sort((a, b) => b.createdAt - a.createdAt);
+    }
   } catch {
     storageAvailable = false;
   }
@@ -158,6 +177,7 @@
     empty.querySelector('p').textContent = noBest ? 'Отметьте просмотренное и поставьте личную оценку от 8.0'
       : noFavorites ? 'Добавляйте карточки кнопкой «В избранное»'
       : noEntries ? 'Добавьте первый тайтл — фильм на вечер, сериал на выходные или любимый мультфильм.'
+      : statusFilter === 'all' ? 'Измените название или выберите другую категорию'
       : 'Измените название, категорию или статус.';
     const emptyButton = document.querySelector('#first-title-button');
     emptyButton.textContent = noFavorites || noBest ? 'Открыть каталог' : noEntries ? 'Добавить первый тайтл ↑' : 'Сбросить фильтры ↗';
@@ -332,7 +352,7 @@
       row.textContent = `${item.label} — ${item.count}`;
       top.append(row);
     }
-    const delta = monthly.comparison(summary.difference);
+    const delta = monthly.comparison(summary.difference, summary.previousTotal);
     document.querySelector('#monthly-previous').textContent = `${summary.previousTitle}: ${summary.previousTotal}`;
     document.querySelector('#monthly-comparison').textContent = delta;
     document.querySelector('#monthly-current').hidden = !summary.current;

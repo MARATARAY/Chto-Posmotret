@@ -28,6 +28,7 @@ function boot(rawFavorites, options = {}) {
   document.querySelector('#watched-date-template').content={firstElementChild:{cloneNode(){return new El('.watched-date-form');}}};
   const entries=[['a','Одинаковое имя','Фильм'],['b','Одинаковое имя','Сериал'],['c','Мультфильм','Мультфильм']].map(([id,title,category],i)=>({id,title,category,status:'planned',rating:8,comment:'text',createdAt:1000-i}));
   const store=new Map([['kadr.watchlist.v1',JSON.stringify(options.entries || entries)],['kadr.favorites.v1',rawFavorites ?? '[]'],['unrelated','keep']]);
+  if (options.fresh) store.delete('kadr.watchlist.v1');
   const events={};const localStorage={getItem(k){if(options.blockRead)throw Error('denied');return store.get(k)??null;},setItem(k,v){if(options.blockWrite)throw Error('quota');store.set(k,v);}};
   let sequence=0;
   const form=document.querySelector('#title-form');
@@ -36,6 +37,30 @@ function boot(rawFavorites, options = {}) {
   vm.runInNewContext(source,{document,localStorage,FormData,window:{KadrMonthly:options.monthly || monthly,navigator:options.navigator,matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
   return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'title',category:'category',year:'year',catalogRating:'catalog-rating',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
 }
+// Spec 001: initialize once, preserve saved catalogs, combine search and category.
+const freshCatalog=boot(null,{fresh:true});
+assert.equal(freshCatalog.count(),'6');
+for(const category of ['Фильм','Сериал','Мультфильм']) {
+  freshCatalog.category(category);assert.equal(freshCatalog.count(),'2');
+  assert.ok(freshCatalog.list.children.every(card=>card.dataset.category===category));
+}
+freshCatalog.category('Фильм');freshCatalog.search('  НАЧ  ');assert.equal(freshCatalog.count(),'1');
+assert.equal(freshCatalog.list.children[0].querySelector('.entry-title').textContent,'Начало');
+freshCatalog.category('Мультфильм');assert.equal(freshCatalog.count(),'0');
+assert.equal(freshCatalog.ids['#catalog-search'].value,'  НАЧ  ');
+assert.equal(freshCatalog.ids['#empty-state'].querySelector('p').textContent,'Измените название или выберите другую категорию');
+freshCatalog.search('   ');assert.equal(freshCatalog.count(),'2');
+assert.equal(freshCatalog.cats[3].attrs['aria-pressed'],'true');
+freshCatalog.category('all');assert.equal(freshCatalog.count(),'6');
+const starterIds=freshCatalog.saved().map(entry=>entry.id);
+const starterReload=boot(null,{entries:freshCatalog.saved()});assert.equal(starterReload.count(),'6');
+assert.deepEqual(starterReload.saved().map(entry=>entry.id),starterIds);
+starterReload.list.children[0].querySelector('.delete-button').click();
+assert.equal(boot(null,{entries:starterReload.saved()}).count(),'5');
+const savedEmpty=boot(null,{entries:[]});assert.equal(savedEmpty.count(),'0');assert.deepEqual(savedEmpty.saved(),[]);
+const blockedFresh=boot(null,{fresh:true,blockRead:true});assert.equal(blockedFresh.count(),'0');assert.equal(blockedFresh.store.has('kadr.watchlist.v1'),false);
+const blockedSeed=boot(null,{fresh:true,blockWrite:true});assert.equal(blockedSeed.count(),'6');assert.equal(blockedSeed.store.has('kadr.watchlist.v1'),false);
+console.log('PASS: starter catalog, all categories, trimmed/case-insensitive combined search, empty state, saved order, reload, deletion, saved empty catalog and storage failures.');
 const t=boot();const watch=t.store.get('kadr.watchlist.v1');assert.equal(t.count(),'3');
 t.favorite(0);assert.deepEqual(JSON.parse(t.store.get('kadr.favorites.v1')),['a']);assert.equal(t.list.children[0].querySelector('.entry-favorite').attrs['aria-pressed'],'true');
 t.view('favorites');assert.equal(t.count(),'1');assert.equal(t.list.children[0].dataset.id,'a');
@@ -138,6 +163,12 @@ assert.match(monthly.comparison(-3),/На 3 меньше/);assert.match(monthly.
 assert.equal(monthly.summarize([dated('jan','Фильм','2027-01-01'),dated('dec','Фильм','2026-12-31')],'2027-01','2027-01-10').previousTotal,1);
 assert.throws(()=>monthly.summarize([],'2026-12',fixedToday));
 const report=monthly.report(stats);assert.match(report,/Всего просмотрено: 4/);assert.match(report,/Октябрь 2026: 1/);assert.match(report,/Месяц ещё не завершён/);assert.match(report,/без корректной даты: 3/);assert.ok(!report.includes('Private'));assert.ok(!monthly.report(emptySummary).includes('Месяц ещё не завершён'));
+assert.equal(monthly.comparison(5,0),'В прошлом месяце записей не было');
+assert.match(monthly.report(emptySummary),/В этом месяце вы ещё ничего не отметили как просмотренное/);
+assert.match(monthly.report(emptySummary),/В прошлом месяце записей не было/);
+const exampleEntries=[...Array.from({length:3},(_,i)=>dated('film'+i,'Фильм','2026-11-05')),dated('series','Сериал','2026-11-05'),dated('cartoon','Мультфильм','2026-11-05'),...Array.from({length:3},(_,i)=>dated('previous'+i,'Фильм','2026-10-05'))];
+const exampleReport=monthly.report(monthly.summarize(exampleEntries,'2026-11',fixedToday));
+assert.ok(exampleReport.startsWith('🎬 Мои итоги просмотра за Ноябрь 2026:\nВсего просмотрено: 5 (на 2 больше, чем в прошлом месяце)\nТоп категорий:\n1. Фильмы — 3\n2. Сериалы — 1\n3. Мультфильмы — 1'));
 const summaryApp=boot('["f1"]',{entries:monthEntries,monthly:fixedMonthly});
 const total=()=>summaryApp.ids['#monthly-total'].textContent;
 assert.equal(total(),'4');assert.equal(summaryApp.saved().find(x=>x.id==='unknown').watchedOn,undefined);
