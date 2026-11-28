@@ -2,11 +2,8 @@
   'use strict';
   const UNAVAILABLE = 'Поиск недоступен. Заполните форму вручную';
   const LIMITED = 'Лимит поиска исчерпан. Попробуйте позже';
-  const NOT_CONFIGURED = 'Онлайн-поиск не настроен. Заполните форму вручную';
-  const KEY = 'kadr.poiskkino.token.v1';
   const externalRating = value => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 10 ? value : null;
   const ratingText = value => externalRating(value) === null ? '—' : value.toFixed(1);
-  const validKey = value => typeof value === 'string' && value.trim().length > 0 && !/[\s\u0400-\u04ff]/.test(value) && value.length <= 256;
   function normalize(item) {
     if (!item || !Number.isSafeInteger(item.id) || item.id <= 0) return null;
     const title = [item.name, item.alternativeName].find(value => typeof value === 'string' && value.trim());
@@ -23,7 +20,7 @@
       duration: length ? String(item.movieLength) : series ? String(seasons.size || 1) : '',
       durationUnit: !length && series ? 'seasons' : 'minutes', durationDefault: !length && series && !seasons.size };
   }
-  function init({ document, fetch, setTimeout, clearTimeout, AbortController, Event, storage, now = Date.now }) {
+  function init({ document, fetch, setTimeout, clearTimeout, AbortController, Event, protocol = 'https:', now = Date.now }) {
     const title = document.querySelector('#title');
     const form = document.querySelector('#title-form');
     const list = document.querySelector('#title-suggestions');
@@ -31,13 +28,8 @@
     const source = document.querySelector('#title-source');
     const kpField = document.querySelector('#kp-rating');
     const imdbField = document.querySelector('#imdb-rating');
-    const keyInput = document.querySelector('#search-api-key');
-    const keyStatus = document.querySelector('#search-key-status');
     const fields = ['category', 'year', 'duration', 'duration-unit-select'].map(id => document.querySelector(`#${id}`));
     const cache = new Map();
-    let apiKey = '';
-    try { const saved = storage?.getItem(KEY); if (validKey(saved)) apiKey = saved.trim(); } catch { /* Session-only memory still works. */ }
-    keyStatus.textContent = apiKey ? 'Ключ подключён для этой вкладки' : 'Для поиска нужен ключ ПоискКино';
     let timer, controller, version = 0, options = [], active = -1, composing = false, imported = null, retryAt = 0;
     function close() {
       version++; clearTimeout(timer); controller?.abort(); controller = null;
@@ -114,9 +106,9 @@
       try {
         const data = await Promise.race([
           (async () => {
-            const params = new URLSearchParams({ page: '1', limit: '10', query });
-            const response = await fetch(`https://api.poiskkino.dev/v1.5/movie/search?${params}`,
-              { method: 'GET', headers: { 'X-API-KEY': apiKey }, signal: pendingController.signal, credentials: 'omit', referrerPolicy: 'no-referrer' });
+            const params = new URLSearchParams({ query });
+            const response = await fetch(`/api/movie-search?${params}`,
+              { method: 'GET', signal: pendingController.signal, credentials: 'omit', referrerPolicy: 'no-referrer' });
             if (response.status === 429) {
               if (token !== version) throw new Error('stale');
               const header = response.headers?.get('Retry-After');
@@ -147,8 +139,8 @@
         showOptions(items);
       } catch (error) {
         if (token === version) status.textContent = ({ limited: LIMITED,
-          401: 'Не удалось проверить ключ поиска',
-          403: 'Доступ к поиску ограничен. Проверьте ключ и лимит' })[error.message] || UNAVAILABLE;
+          401: 'Поиск временно недоступен. Заполните форму вручную',
+          403: 'Доступ к поиску ограничен. Заполните форму вручную' })[error.message] || UNAVAILABLE;
       } finally {
         clearTimeout(deadline);
         if (token === version) { title.setAttribute('aria-busy', 'false'); controller = null; }
@@ -159,23 +151,10 @@
       close(); status.textContent = '';
       const query = title.value.trim();
       if (composing || query.length < 3 || query.length > 160) return;
-      if (!validKey(apiKey)) { status.textContent = NOT_CONFIGURED; return; }
+      if (protocol === 'file:') { status.textContent = 'Онлайн-поиск доступен на опубликованном сайте'; return; }
       const token = version;
       timer = setTimeout(() => search(query, token), 400);
     }
-    document.querySelector('#search-key-apply').addEventListener('click', () => {
-      close(); cache.clear();
-      apiKey = keyInput.value.trim(); keyInput.value = '';
-      if (!validKey(apiKey)) apiKey = '';
-      try {
-        if (apiKey) storage?.setItem(KEY, apiKey); else storage?.removeItem(KEY);
-        keyStatus.textContent = apiKey ? 'Ключ подключён для этой вкладки' : 'Ключ отключён';
-      } catch { keyStatus.textContent = 'Ключ действует до обновления страницы'; }
-      input();
-    });
-    keyInput.addEventListener('keydown', event => {
-      if (event.key === 'Enter') { event.preventDefault(); document.querySelector('#search-key-apply').click(); }
-    });
     title.addEventListener('input', input);
     title.addEventListener('compositionstart', () => { composing = true; close(); status.textContent = ''; });
     title.addEventListener('compositionend', () => { composing = false; input(); });
@@ -203,5 +182,5 @@
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { init, normalize, ratingText };
   else window.KadrOnlineSearch = init({ document, fetch: window.fetch.bind(window), setTimeout, clearTimeout, AbortController, Event,
-    storage: { getItem: key => window.sessionStorage.getItem(key), setItem: (key, value) => window.sessionStorage.setItem(key, value), removeItem: key => window.sessionStorage.removeItem(key) } });
+    protocol: window.location.protocol });
 })();
