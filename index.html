@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#4a1326" />
-    <title>Кадр — мой список просмотра</title>
+    <title>КиноМания — Вдохновляйся, планируй сеансы и смотри прямо сейчас</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="monthly-summary.js" defer></script>
     <script src="movie-api.js" defer></script>
@@ -16,7 +16,7 @@
     <div id="seasonal-layer" class="seasonal-layer" aria-hidden="true" hidden></div>
     <div class="page-shell">
       <header class="site-header">
-        <a class="brand" href="./" aria-label="Кадр — главная"><span class="brand-symbol">к.</span>кадр<span class="brand-period">.</span></a>
+        <a class="brand" href="./" aria-label="КиноМания — главная"><span class="brand-symbol" aria-hidden="true">к.</span>КиноМания</a>
         <div class="header-controls"><button id="seasonal-toggle" class="seasonal-toggle" type="button" aria-controls="seasonal-layer" aria-pressed="false" aria-label="Сезонная анимация: выключена" hidden>Анимация: Выкл</button><span class="header-note"><span class="live-dot"></span> Личная коллекция впечатлений</span></div>
       </header>
       <p id="seasonal-message" class="seasonal-message" role="status" aria-live="polite"></p>
@@ -24,8 +24,8 @@
       <main>
         <section class="intro" aria-labelledby="page-title">
           <div class="eyebrow"><span></span> СОХРАНЯЙ. СМОТРИ. ВСПОМИНАЙ.</div>
-          <h1 id="page-title">Хорошее кино.<br />В одном <span>месте.</span></h1>
-          <p>Всё, что хочется посмотреть. И всё, что осталось<br class="desktop-break" /> с тобой после финальных титров.</p>
+          <h1 id="page-title">КиноМания</h1>
+          <p class="site-tagline">Вдохновляйся, планируй сеансы и смотри прямо сейчас</p>
           <div class="cinema-scene is-paused">
             <svg class="cinema-art" viewBox="0 0 380 270" aria-hidden="true" focusable="false">
               <defs>
@@ -76,7 +76,7 @@
                 <use href="#camera-reel" x="157" y="65"/><use href="#camera-reel" x="249" y="59"/>
                 <circle cx="146" cy="128" r="4" fill="#e4bd7b"/>
                 <path d="M151 155H223" stroke="#a27447"/>
-                <text x="188" y="144" text-anchor="middle" fill="#e4bd7b" font-size="10" font-family="Georgia,serif" letter-spacing="4">КАДР</text>
+                <text x="188" y="144" text-anchor="middle" fill="#e4bd7b" font-size="8" font-family="Georgia,serif" letter-spacing="1">КИНОМАНИЯ</text>
               </g>
             </svg>
             <button class="motion-toggle" id="motion-toggle" type="button" hidden>Включить анимацию</button>
@@ -145,7 +145,7 @@
           <div id="monthly-copy-fallback" hidden><label for="monthly-report">Текст отчёта</label><textarea id="monthly-report" readonly rows="14" aria-describedby="monthly-copy-status"></textarea></div>
         </section>
       </main>
-      <footer class="site-footer"><span class="footer-brand">кадр.</span><span>Жизнь слишком коротка для плохого кино.</span><span>Ваша следующая история уже ждёт <span class="footer-star">✳</span></span></footer>
+      <footer class="site-footer"><span class="footer-brand">КиноМания</span><span>Жизнь слишком коротка для плохого кино.</span><span>Ваша следующая история уже ждёт <span class="footer-star">✳</span></span></footer>
     </div>
     <template id="entry-template"><article class="entry"><div class="entry-art"><img class="entry-poster" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" hidden /><span aria-hidden="true"></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-details" hidden></p><div class="entry-source-ratings source-ratings" hidden></div><a class="entry-source" target="_blank" rel="noopener noreferrer" hidden>Данные Wikidata</a><p class="entry-comment"></p><div class="entry-actions"><button class="entry-watch watch-button" type="button" aria-expanded="false">Смотреть</button><button class="entry-status" type="button"></button><button class="entry-favorite" type="button" aria-pressed="false">В избранное</button><button class="entry-review-toggle" type="button" aria-expanded="false">Оценка и заметка</button></div><section class="entry-watch-panel watch-links" hidden><h3 class="entry-watch-heading"></h3><div class="entry-watch-platforms watch-platforms"></div><p>На площадках откроется поиск по названию; YouTube — главная страница</p><p class="entry-watch-error watch-error" role="alert"></p></section></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить карточку" title="Удалить карточку">×</button></div></article></template>
     <template id="watched-date-template">
