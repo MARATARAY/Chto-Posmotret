@@ -8,14 +8,17 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="monthly-summary.js" defer></script>
     <script src="app.js" defer></script>
+    <script src="seasonal-animation.js" defer></script>
     <script src="online-search.js" defer></script>
   </head>
   <body>
+    <div id="seasonal-layer" class="seasonal-layer" aria-hidden="true" hidden></div>
     <div class="page-shell">
       <header class="site-header">
         <a class="brand" href="./" aria-label="Кадр — главная"><span class="brand-symbol">к.</span>кадр<span class="brand-period">.</span></a>
-        <span class="header-note"><span class="live-dot"></span> Личная коллекция впечатлений</span>
+        <div class="header-controls"><button id="seasonal-toggle" class="seasonal-toggle" type="button" aria-controls="seasonal-layer" aria-pressed="false" aria-label="Сезонная анимация: выключена" hidden>Анимация: Выкл</button><span class="header-note"><span class="live-dot"></span> Личная коллекция впечатлений</span></div>
       </header>
+      <p id="seasonal-message" class="seasonal-message" role="status" aria-live="polite"></p>
 
       <main>
         <section class="intro" aria-labelledby="page-title">
