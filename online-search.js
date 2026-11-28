@@ -24,7 +24,7 @@
       durationUnit: !length && series ? 'seasons' : 'minutes', durationDefault: !length && series && !seasons.size };
   }
   function init({ document, fetch, setTimeout, clearTimeout, AbortController, Event, protocol = 'https:', localSearch = false, now = Date.now }) {
-    const title = document.querySelector('#title');
+    const title = document.querySelector('#movie-query');
     const form = document.querySelector('#title-form');
     const list = document.querySelector('#title-suggestions');
     const status = document.querySelector('#title-lookup-status');
@@ -198,7 +198,7 @@
         ? window.KadrMovieAPI.createLocalFetch(localConfig, window.fetch.bind(window)) : null;
       window.KadrOnlineSearch = init({ document, fetch: directFetch || window.fetch.bind(window),
         setTimeout, clearTimeout, AbortController, Event, protocol: window.location.protocol, localSearch: !!directFetch });
-      if (document.querySelector('#title').value.trim()) document.querySelector('#title').dispatchEvent(new Event('input', { bubbles: true }));
+      if (document.querySelector('#movie-query').value.trim()) document.querySelector('#movie-query').dispatchEvent(new Event('input', { bubbles: true }));
     }
     if (window.location.protocol === 'file:') {
       const configScript = document.createElement('script');

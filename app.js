@@ -98,7 +98,7 @@
     youtube.target = '_blank'; youtube.rel = 'noopener noreferrer';
     host.append(youtube);
   }
-  const watchTitle = document.querySelector('#title');
+  const watchTitle = document.querySelector('#movie-query');
   const watchButton = document.querySelector('#watch-button');
   const watchLinks = document.querySelector('#watch-links');
   const watchError = document.querySelector('#watch-error');
@@ -620,7 +620,7 @@
     return `${count} ${word}`;
   }
 
-  const validatedFields = ['title', 'category', 'year', 'duration', 'personal-rating', 'comment'];
+  const validatedFields = ['movie-query', 'category', 'year', 'duration', 'personal-rating', 'comment'];
 
   function setFieldError(id, text = '') {
     const input = document.querySelector(`#${id}`);
@@ -663,7 +663,7 @@
   form.addEventListener('submit', event => {
     event.preventDefault();
     const values = new FormData(form);
-    const title = String(values.get('title') || '').trim();
+    const title = String(values.get('movieQuery') || '').trim();
     const category = String(values.get('category') || '');
     const year = String(values.get('year') || '').trim();
     const rawDuration = String(values.get('duration') || '').trim();
@@ -673,7 +673,7 @@
     const errors = {
       'personal-rating': personal.error,
       comment: comment.length <= 3000 ? '' : 'Заметка должна быть не длиннее 3000 символов',
-      title: title.length >= 1 && title.length <= 160 ? '' : 'Введите название от 1 до 160 символов',
+      'movie-query': title.length >= 1 && title.length <= 160 ? '' : 'Введите название от 1 до 160 символов',
       category: ['Фильм', 'Сериал', 'Мультфильм'].includes(category) ? '' : 'Выберите категорию из списка',
       year: /^[1-9]\d{3}$/.test(year) ? '' : 'Введите год четырьмя цифрами от 1000 до 9999',
       duration: /^[1-9]\d{0,3}$/.test(rawDuration) ? '' : 'Введите целое число от 1 до 9999',
@@ -762,7 +762,7 @@
       setView('catalog');
       render();
     } else if (entries.length > 0) resetFilters();
-    else document.querySelector('#title').focus();
+    else document.querySelector('#movie-query').focus();
   });
   window.addEventListener('storage', event => {
     if (event.key === FAVORITES_KEY || event.key === null) {

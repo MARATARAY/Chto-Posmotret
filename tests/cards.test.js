@@ -34,25 +34,25 @@ function boot(rawFavorites, options = {}) {
   const events={};const localStorage={getItem(k){if(options.blockRead)throw Error('denied');return store.get(k)??null;},setItem(k,v){if(options.blockWrite)throw Error('quota');store.set(k,v);}};
   let sequence=0;
   const form=document.querySelector('#title-form');
-  form.reset=function(){this.handlers.reset?.();this.values={};for(const id of ['title','year','duration'])document.querySelector('#'+id).value='';document.querySelector('#category').value='Фильм';this.resets=(this.resets||0)+1;};
-  const FormData=class {constructor(form){this.values=form.values||{};}get(key){return this.values[key]??null;}};
+  form.reset=function(){this.handlers.reset?.();this.values={};for(const id of ['movie-query','year','duration'])document.querySelector('#'+id).value='';document.querySelector('#category').value='Фильм';this.resets=(this.resets||0)+1;};
+  const FormData=class {constructor(form){this.values=form.values||{};}get(key){return this.values[key==='movieQuery'?'title':key]??null;}};
   vm.runInNewContext(source,{document,localStorage,FormData,window:{KadrOnlineSearch:options.onlineSearch,KadrMonthly:options.monthly || monthly,navigator:options.navigator,matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
-  return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'title',category:'category',year:'year',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
+  return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'movie-query',category:'category',year:'year',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
 }
 // Watch only reveals fixed links; it must not validate or submit the add form.
 const watchUI=boot();const watchBefore=watchUI.store.get('kadr.watchlist.v1');
-watchUI.ids['#title'].value='   ';watchUI.ids['#watch-button'].click();
-assert.equal(watchUI.ids['#watch-error'].textContent,'Введите название фильма');assert.equal(watchUI.ids['#watch-error'].hidden,false);assert.equal(watchUI.ids['#watch-links'].hidden,true);assert.equal(watchUI.document.activeElement,watchUI.ids['#title']);
-watchUI.ids['#title'].value='  Матрица  ';watchUI.ids['#title'].handlers.input();assert.equal(watchUI.ids['#watch-error'].hidden,true);
+watchUI.ids['#movie-query'].value='   ';watchUI.ids['#watch-button'].click();
+assert.equal(watchUI.ids['#watch-error'].textContent,'Введите название фильма');assert.equal(watchUI.ids['#watch-error'].hidden,false);assert.equal(watchUI.ids['#watch-links'].hidden,true);assert.equal(watchUI.document.activeElement,watchUI.ids['#movie-query']);
+watchUI.ids['#movie-query'].value='  Матрица  ';watchUI.ids['#movie-query'].handlers.input();assert.equal(watchUI.ids['#watch-error'].hidden,true);
 watchUI.ids['#watch-button'].focus();watchUI.ids['#watch-button'].click();assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: Матрица');assert.equal(watchUI.ids['#watch-button'].attrs['aria-expanded'],'true');assert.equal(watchUI.document.activeElement,watchUI.ids['#watch-button']);assert.equal(watchUI.ids['#watch-links'].hidden,false);
 watchUI.ids['#watch-button'].click();assert.equal(watchUI.store.get('kadr.watchlist.v1'),watchBefore);
-watchUI.ids['#title'].value='Начало';watchUI.ids['#title'].handlers.change();assert.equal(watchUI.ids['#watch-links'].hidden,false);assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: Начало');assert.equal(watchUI.ids['#watch-button'].attrs['aria-expanded'],'true');
-watchUI.ids['#title'].value='<b>Фильм & название</b>';watchUI.ids['#watch-button'].click();assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: <b>Фильм & название</b>');
+watchUI.ids['#movie-query'].value='Начало';watchUI.ids['#movie-query'].handlers.change();assert.equal(watchUI.ids['#watch-links'].hidden,false);assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: Начало');assert.equal(watchUI.ids['#watch-button'].attrs['aria-expanded'],'true');
+watchUI.ids['#movie-query'].value='<b>Фильм & название</b>';watchUI.ids['#watch-button'].click();assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: <b>Фильм & название</b>');
 watchUI.ids['#title-form'].reset();assert.equal(watchUI.ids['#watch-links'].hidden,true);assert.equal(watchUI.ids['#watch-error'].hidden,true);
 console.log('PASS: Watch empty/space error, trim, no submit/storage writes, safe heading, repeat, title input/change and form reset.');
 // Direct searches submit only the requested fields, then clean up outside the add form.
 const direct=boot();const directOriginal=direct.store.get('kadr.watchlist.v1');
-direct.ids['#title'].value='  Матрица & "+" <b>фильм</b>  ';direct.ids['#title'].handlers.input();assert.equal(direct.ids['#watch-links'].hidden,false);assert.equal(direct.document.posts.length,0);
+direct.ids['#movie-query'].value='  Матрица & "+" <b>фильм</b>  ';direct.ids['#movie-query'].handlers.input();assert.equal(direct.ids['#watch-links'].hidden,false);assert.equal(direct.document.posts.length,0);
 const platforms=direct.ids['#watch-platforms'].children;assert.equal(platforms.length,4);
 assert.deepEqual(platforms.map(item=>item.textContent),['KinoGo (kino-go.bi)','KinoGo TV (tv.kinogo.mu)','Baskino (baskino.my)','YouTube']);
 assert.equal(platforms[3].href,'https://youtube.com');assert.equal(platforms[3].target,'_blank');assert.equal(platforms[3].rel,'noopener noreferrer');
@@ -62,13 +62,13 @@ for(let i=0;i<3;i++){
   assert.deepEqual(post.fields,[{name:'do',value:'search',type:'hidden'},{name:'subaction',value:'search',type:'hidden'},{name:'story',value:'Матрица & "+" <b>фильм</b>',type:'hidden'}]);assert.equal(direct.document.body.children.length,0);
 }
 assert.deepEqual(direct.document.posts.map(post=>post.action),['https://kino-go.bi/index.php?do=search','https://tv.kinogo.mu/index.php?do=search','https://baskino.my/index.php?do=search']);
-direct.ids['#title'].value='Новое название';platforms[0].click();assert.equal(direct.document.posts[3].fields[2].value,'Новое название');
+direct.ids['#movie-query'].value='Новое название';platforms[0].click();assert.equal(direct.document.posts[3].fields[2].value,'Новое название');
 const card=direct.list.children[0];card.querySelector('.entry-watch').click();assert.equal(card.querySelector('.entry-watch-panel').hidden,false);assert.equal(card.querySelector('.entry-watch').attrs['aria-expanded'],'true');
 card.querySelector('.entry-watch-platforms').children[1].click();assert.equal(direct.document.posts[4].fields[2].value,direct.entries[0].title);assert.equal(direct.document.posts[4].action,'https://tv.kinogo.mu/index.php?do=search');
 assert.equal(new Set(direct.list.children.map(card=>card.querySelector('.entry-watch-panel').id)).size,direct.list.children.length);
 assert.equal(direct.store.get('kadr.watchlist.v1'),directOriginal);assert.equal(direct.document.body.children.length,0);
-const postFailure=boot(null,{failPost:true});postFailure.ids['#title'].value='Матрица';postFailure.ids['#watch-platforms'].children[0].click();assert.equal(postFailure.ids['#watch-site-error'].textContent,'Не удалось открыть площадку. Попробуйте ещё раз');assert.equal(postFailure.document.body.children.length,0);assert.equal(postFailure.ids['#title'].value,'Матрица');
-direct.ids['#title'].value=' ';direct.ids['#title'].handlers.input();assert.equal(direct.ids['#watch-links'].hidden,true);const postsBefore=direct.document.posts.length;platforms[0].click();assert.equal(direct.document.posts.length,postsBefore);
+const postFailure=boot(null,{failPost:true});postFailure.ids['#movie-query'].value='Матрица';postFailure.ids['#watch-platforms'].children[0].click();assert.equal(postFailure.ids['#watch-site-error'].textContent,'Не удалось открыть площадку. Попробуйте ещё раз');assert.equal(postFailure.document.body.children.length,0);assert.equal(postFailure.ids['#movie-query'].value,'Матрица');
+direct.ids['#movie-query'].value=' ';direct.ids['#movie-query'].handlers.input();assert.equal(direct.ids['#watch-links'].hidden,true);const postsBefore=direct.document.posts.length;platforms[0].click();assert.equal(direct.document.posts.length,postsBefore);
 console.log('PASS: exact POST actions/raw fields, card title isolation, unique panel IDs, cleanup on success/error, current input and no storage mutations.');
 // Supplied local posters attach at render time without rewriting saved entries.
 const posterEntries=[['Матрица','1999','matrix.jpeg'],['Начало','2010','inception.jpg'],['Лабиринт Фавна','2006','pans-labyrinth.jpg'],['  интерстеллар  ',undefined,'interstellar.jpg']].map(([title,year,file],i)=>({id:'poster-'+i,title,year,file,category:'Фильм',status:'planned',rating:null,comment:'keep',createdAt:1000-i}));
@@ -140,7 +140,7 @@ assert.equal(cards.ids['#title-form'].resets,1);assert.equal(cards.list.children
 assert.equal(cards.list.children[0].querySelector('.entry-favorite').attrs['aria-pressed'],'false');
 const restoredCards=boot(cards.store.get('kadr.favorites.v1'),{entries:cards.saved()});assert.equal(restoredCards.count(),'4');assert.equal(restoredCards.saved()[1].id,'a');assert.equal(restoredCards.list.children[1].querySelector('.entry-details').hidden,true);
 for(const [field,values] of Object.entries({title:['','   ','x'.repeat(161)],category:['Other','Другое'],year:['24','0000','999','10000','2024.0','2e03','-2024'],duration:['','0','-1','1.5','1e2','10000']})){
-  for(const value of values){const before=cards.store.get('kadr.watchlist.v1');const bad={...valid,[field]:value};cards.submit(bad);assert.equal(cards.store.get('kadr.watchlist.v1'),before,field+': '+value);assert.equal(cards.ids['#title-form'].values[field],value);assert.equal(cards.ids['#'+(field==='catalogRating'?'catalog-rating':field)].attrs['aria-invalid'],'true');}
+  for(const value of values){const before=cards.store.get('kadr.watchlist.v1');const bad={...valid,[field]:value};cards.submit(bad);assert.equal(cards.store.get('kadr.watchlist.v1'),before,field+': '+value);assert.equal(cards.ids['#title-form'].values[field],value);assert.equal(cards.ids['#'+(field==='title'?'movie-query':field)].attrs['aria-invalid'],'true');}
 }
 const ignoredManual=boot();ignoredManual.submit({...valid,catalogRating:'9.9'});assert.equal(ignoredManual.saved()[0].catalogRating,null);
 for(const [count,label] of [[1,'1 сезон'],[2,'2 сезона'],[5,'5 сезонов'],[11,'11 сезонов'],[21,'21 сезон'],[22,'22 сезона'],[114,'114 сезонов'],[9999,'9999 сезонов']]){const b=boot();b.submit({...valid,category:'Сериал',duration:String(count),year:'1000'});assert.equal(b.saved()[0].durationUnit,'seasons');assert.ok(b.list.children[0].querySelector('.entry-details').textContent.endsWith(label));}

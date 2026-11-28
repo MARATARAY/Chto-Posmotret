@@ -177,3 +177,6 @@ html,body{overflow-x:hidden}.page-shell{position:relative;z-index:1}.seasonal-la
 /* Independent source ratings. */
 .source-ratings{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.rating-badge{display:inline-block;padding:4px 8px;border:1px solid #b88955;border-radius:4px;background:#482035;color:#ffe1a3;font-size:12px;font-weight:700;line-height:1.5;white-space:nowrap}.title-suggestions li>span:first-child{display:block;overflow-wrap:anywhere}
 .form-panel select{appearance:none;min-height:44px;padding-right:28px;background-image:linear-gradient(45deg,transparent 50%,#5c2236 50%),linear-gradient(135deg,#5c2236 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+
+/* Safari may offer the user's contact card despite autocomplete="off". */
+#movie-query::-webkit-contacts-auto-fill-button{display:none!important;visibility:hidden;pointer-events:none}
