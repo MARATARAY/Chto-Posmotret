@@ -29,7 +29,8 @@
     const list = document.querySelector('#title-suggestions');
     const status = document.querySelector('#title-lookup-status');
     const source = document.querySelector('#title-source');
-    const ratings = document.querySelector('#selected-ratings');
+    const kpField = document.querySelector('#kp-rating');
+    const imdbField = document.querySelector('#imdb-rating');
     const keyInput = document.querySelector('#search-api-key');
     const keyStatus = document.querySelector('#search-key-status');
     const fields = ['category', 'year', 'duration', 'duration-unit-select'].map(id => document.querySelector(`#${id}`));
@@ -60,7 +61,7 @@
           field.dispatchEvent(new Event('change', { bubbles: true }));
         }
       });
-      source.hidden = true; ratings.hidden = true; ratings.replaceChildren();
+      source.hidden = true; kpField.value = ''; imdbField.value = '';
     }
     fields.forEach(field => {
       for (const event of ['input', 'change']) field.addEventListener(event, () => {
@@ -79,7 +80,8 @@
       });
       imported = { ...show, values, edited: new Set() };
       source.href = 'https://poiskkino.dev'; source.hidden = false;
-      paintRatings(ratings, show); ratings.hidden = false; title.focus();
+      kpField.value = show.kpRating === null ? '' : ratingText(show.kpRating);
+      imdbField.value = show.imdbRating === null ? '' : ratingText(show.imdbRating); title.focus();
       status.textContent = 'Данные заполнены. Проверьте поля перед добавлением.'
         + (show.durationDefault ? ' Длительность 1 сезон задана по умолчанию.' : '');
     }
@@ -193,7 +195,7 @@
       }
     });
     title.addEventListener('blur', () => { close(); status.textContent = ''; });
-    form.addEventListener('reset', () => { close(); imported = null; source.hidden = true; ratings.hidden = true; ratings.replaceChildren(); status.textContent = ''; });
+    form.addEventListener('reset', () => { close(); imported = null; source.hidden = true; kpField.value = ''; imdbField.value = ''; status.textContent = ''; });
     return { getMetadata() {
       if (!imported || title.value !== imported.title) return {};
       return { poiskkinoId: imported.id, kpRating: imported.kpRating, imdbRating: imported.imdbRating };

@@ -34,10 +34,10 @@ function boot(rawFavorites, options = {}) {
   const events={};const localStorage={getItem(k){if(options.blockRead)throw Error('denied');return store.get(k)??null;},setItem(k,v){if(options.blockWrite)throw Error('quota');store.set(k,v);}};
   let sequence=0;
   const form=document.querySelector('#title-form');
-  form.reset=function(){this.handlers.reset?.();this.values={};for(const id of ['title','year','catalog-rating','duration'])document.querySelector('#'+id).value='';document.querySelector('#category').value='Фильм';this.resets=(this.resets||0)+1;};
+  form.reset=function(){this.handlers.reset?.();this.values={};for(const id of ['title','year','duration'])document.querySelector('#'+id).value='';document.querySelector('#category').value='Фильм';this.resets=(this.resets||0)+1;};
   const FormData=class {constructor(form){this.values=form.values||{};}get(key){return this.values[key]??null;}};
   vm.runInNewContext(source,{document,localStorage,FormData,window:{KadrOnlineSearch:options.onlineSearch,KadrMonthly:options.monthly || monthly,navigator:options.navigator,matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
-  return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'title',category:'category',year:'year',catalogRating:'catalog-rating',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
+  return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'title',category:'category',year:'year',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
 }
 // Watch only reveals fixed links; it must not validate or submit the add form.
 const watchUI=boot();const watchBefore=watchUI.store.get('kadr.watchlist.v1');
@@ -135,14 +135,14 @@ console.log('PASS: changing watch status, deleting and undoing a card preserve i
 const valid={title:'  New film  ',category:'Фильм',year:'2024',catalogRating:'8,4',duration:'120',status:'planned',comment:'Note'};
 const cards=boot('["a"]');cards.view('favorites');cards.search('missing');cards.category('Сериал');cards.submit(valid);
 assert.equal(cards.count(),'4');const newCard=cards.saved()[0];
-assert.equal(newCard.title,'New film');assert.equal(newCard.year,'2024');assert.equal(newCard.catalogRating,8.4);assert.equal(newCard.duration,120);assert.equal(newCard.durationUnit,'minutes');assert.equal(newCard.rating,null);assert.equal(newCard.origin,'user');
-assert.equal(cards.ids['#title-form'].resets,1);assert.equal(cards.list.children[0].querySelector('.entry-details').textContent,'2024 · Рейтинг 8.4 · 120 мин');
+assert.equal(newCard.title,'New film');assert.equal(newCard.year,'2024');assert.equal(newCard.catalogRating,null);assert.equal(newCard.duration,120);assert.equal(newCard.durationUnit,'minutes');assert.equal(newCard.rating,null);assert.equal(newCard.origin,'user');
+assert.equal(cards.ids['#title-form'].resets,1);assert.equal(cards.list.children[0].querySelector('.entry-details').textContent,'2024 · 120 мин');
 assert.equal(cards.list.children[0].querySelector('.entry-favorite').attrs['aria-pressed'],'false');
 const restoredCards=boot(cards.store.get('kadr.favorites.v1'),{entries:cards.saved()});assert.equal(restoredCards.count(),'4');assert.equal(restoredCards.saved()[1].id,'a');assert.equal(restoredCards.list.children[1].querySelector('.entry-details').hidden,true);
-for(const [field,values] of Object.entries({title:['','   ','x'.repeat(161)],category:['Other','Другое'],year:['24','0000','999','10000','2024.0','2e03','-2024'],catalogRating:['-0.1','10.1','8.44','8.40','Infinity','NaN','1e0'],duration:['','0','-1','1.5','1e2','10000']})){
+for(const [field,values] of Object.entries({title:['','   ','x'.repeat(161)],category:['Other','Другое'],year:['24','0000','999','10000','2024.0','2e03','-2024'],duration:['','0','-1','1.5','1e2','10000']})){
   for(const value of values){const before=cards.store.get('kadr.watchlist.v1');const bad={...valid,[field]:value};cards.submit(bad);assert.equal(cards.store.get('kadr.watchlist.v1'),before,field+': '+value);assert.equal(cards.ids['#title-form'].values[field],value);assert.equal(cards.ids['#'+(field==='catalogRating'?'catalog-rating':field)].attrs['aria-invalid'],'true');}
 }
-for(const rating of ['0','0.0','10','10.0','8.4']){const b=boot();b.submit({...valid,catalogRating:rating});assert.equal(b.saved()[0].catalogRating,Number(rating));}
+const ignoredManual=boot();ignoredManual.submit({...valid,catalogRating:'9.9'});assert.equal(ignoredManual.saved()[0].catalogRating,null);
 for(const [count,label] of [[1,'1 сезон'],[2,'2 сезона'],[5,'5 сезонов'],[11,'11 сезонов'],[21,'21 сезон'],[22,'22 сезона'],[114,'114 сезонов'],[9999,'9999 сезонов']]){const b=boot();b.submit({...valid,category:'Сериал',duration:String(count),year:'1000'});assert.equal(b.saved()[0].durationUnit,'seasons');assert.ok(b.list.children[0].querySelector('.entry-details').textContent.endsWith(label));}
 const cartoon=boot();cartoon.submit({...valid,category:'Мультфильм',year:'9999',duration:'1'});assert.ok(cartoon.list.children[0].querySelector('.entry-details').textContent.endsWith('1 мин'));
 const fail=boot('["a"]',{blockWrite:true});const original=fail.store.get('kadr.watchlist.v1');fail.submit(valid);assert.equal(fail.store.get('kadr.watchlist.v1'),original);assert.equal(fail.count(),'3');assert.equal(fail.ids['#title-form'].values.title,valid.title);assert.equal(fail.ids['#title-form'].resets,undefined);
@@ -156,14 +156,14 @@ const importedCard=boot(null,{entries:[],onlineSearch:{getMetadata:()=>({tvmazeI
 importedCard.submit({...valid,title:'TVmaze test',category:'Сериал'});
 assert.equal(importedCard.saved()[0].tvmazeId,315);assert.equal(importedCard.saved()[0].ratingSource,'TVmaze');
 assert.equal(importedCard.list.children[0].querySelector('.entry-source').href,'https://www.tvmaze.com/shows/315');
-assert.match(importedCard.list.children[0].querySelector('.entry-details').textContent,/Рейтинг TVmaze/);
+const legacySource=boot(null,{entries:[{...importedCard.saved()[0],catalogRating:8.4}]});assert.match(legacySource.list.children[0].querySelector('.entry-details').textContent,/Рейтинг TVmaze 8.4/);
 const importedReload=boot(null,{entries:importedCard.saved()});assert.equal(importedReload.list.children[0].querySelector('.entry-source').hidden,false);
 importedReload.list.children[0].querySelector('.delete-button').click();importedReload.ids['#form-message'].children[0].click();assert.equal(importedReload.saved()[0].tvmazeId,315);
 const manualRating=boot(null,{entries:[{...importedCard.saved()[0],ratingSource:undefined}]});assert.ok(!manualRating.list.children[0].querySelector('.entry-details').textContent.includes('Рейтинг TVmaze'));assert.equal(manualRating.list.children[0].querySelector('.entry-source').hidden,false);
 const unsafeSource=boot(null,{entries:[{...importedCard.saved()[0],tvmazeId:'javascript:alert(1)'}]});assert.equal(unsafeSource.list.children[0].querySelector('.entry-source').hidden,true);
 const wikiCard=boot(null,{entries:[],onlineSearch:{getMetadata:()=>({wikidataId:'Q13417189'})}});
 wikiCard.submit({...valid,title:'Интерстеллар',catalogRating:'0.0',duration:'120'});
-assert.equal(wikiCard.saved()[0].wikidataId,'Q13417189');assert.equal(wikiCard.saved()[0].catalogRating,0);
+assert.equal(wikiCard.saved()[0].wikidataId,'Q13417189');assert.equal(wikiCard.saved()[0].catalogRating,null);
 assert.equal(wikiCard.list.children[0].querySelector('.entry-source').href,'https://www.wikidata.org/wiki/Q13417189');
 assert.equal(wikiCard.list.children[0].querySelector('.entry-source').textContent,'Данные Wikidata');
 assert.ok(!wikiCard.list.children[0].querySelector('.entry-details').textContent.includes('Рейтинг Wikidata'));

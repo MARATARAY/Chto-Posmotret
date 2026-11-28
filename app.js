@@ -616,7 +616,7 @@
     return `${count} ${word}`;
   }
 
-  const validatedFields = ['title', 'category', 'year', 'catalog-rating', 'duration', 'personal-rating', 'comment'];
+  const validatedFields = ['title', 'category', 'year', 'duration', 'personal-rating', 'comment'];
 
   function setFieldError(id, text = '') {
     const input = document.querySelector(`#${id}`);
@@ -662,7 +662,6 @@
     const title = String(values.get('title') || '').trim();
     const category = String(values.get('category') || '');
     const year = String(values.get('year') || '').trim();
-    const rawRating = String(values.get('catalogRating') || '').trim().replace(',', '.');
     const rawDuration = String(values.get('duration') || '').trim();
     const status = String(values.get('status') || 'planned');
     const personal = status === 'watched' ? parsePersonalRating(String(values.get('personalRating') || '')) : { value: null, error: '' };
@@ -673,7 +672,6 @@
       title: title.length >= 1 && title.length <= 160 ? '' : 'Введите название от 1 до 160 символов',
       category: ['Фильм', 'Сериал', 'Мультфильм'].includes(category) ? '' : 'Выберите категорию из списка',
       year: /^[1-9]\d{3}$/.test(year) ? '' : 'Введите год четырьмя цифрами от 1000 до 9999',
-      'catalog-rating': !rawRating || (/^\d{1,2}(?:\.\d)?$/.test(rawRating) && Number(rawRating) <= 10) ? '' : 'Введите рейтинг от 0.0 до 10.0, не более одной цифры после точки',
       duration: /^[1-9]\d{0,3}$/.test(rawDuration) ? '' : 'Введите целое число от 1 до 9999',
     };
     for (const id of validatedFields) setFieldError(id, errors[id]);
@@ -686,7 +684,7 @@
     const entry = {
       id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title, category, year,
-      catalogRating: rawRating ? Number(rawRating) : null,
+      catalogRating: null,
       duration: Number(rawDuration),
       durationUnit: ['seasons', 'minutes'].includes(values.get('durationUnit')) ? values.get('durationUnit') : category === 'Сериал' ? 'seasons' : 'minutes',
       origin: 'user',

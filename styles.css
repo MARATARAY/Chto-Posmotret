@@ -115,7 +115,7 @@ input:not([type="radio"]),select,textarea,.status-control label,.status-control 
 .status-filter-wrap select,.motion-toggle{min-height:44px}
 
 /* Required card metadata and accessible validation. */
-.card-details-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:23px}
+.card-details-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin-top:23px}
 .field-error{font-size:12px;line-height:1.5;color:#962c40;overflow-wrap:anywhere}
 .field-hint{font-size:11px;color:#76616b}
 .form-panel [aria-invalid="true"]{border:2px solid #a4334a}
