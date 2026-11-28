@@ -272,7 +272,8 @@
       card.querySelector('.entry-date').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(entry.createdAt);
       const hasWikidata = typeof entry.wikidataId === 'string' && /^Q[1-9]\d*$/.test(entry.wikidataId);
       const hasTVmaze = Number.isSafeInteger(entry.tvmazeId) && entry.tvmazeId > 0;
-      const hasSource = hasWikidata || hasTVmaze;
+      const hasPoiskkino = Number.isSafeInteger(entry.poiskkinoId) && entry.poiskkinoId > 0;
+      const hasSource = hasPoiskkino || hasWikidata || hasTVmaze;
       const ratingLabel = !hasWikidata && hasTVmaze && entry.ratingSource === 'TVmaze' ? 'Рейтинг TVmaze' : 'Рейтинг';
       const details = [];
       if (/^[1-9]\d{3}$/.test(String(entry.year ?? ''))) details.push(String(entry.year));
@@ -283,10 +284,19 @@
       const detailLine = card.querySelector('.entry-details');
       detailLine.textContent = details.join(' · ');
       detailLine.hidden = details.length === 0;
+      const externalScores = card.querySelector('.entry-source-ratings');
+      externalScores.hidden = !hasPoiskkino;
+      if (hasPoiskkino) {
+        for (const [label, value] of [['КП', entry.kpRating], ['IMDb', entry.imdbRating]]) {
+          const badge = document.createElement('span'); badge.className = 'rating-badge';
+          badge.textContent = `${label}: ${typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 10 ? value.toFixed(1) : '—'}`;
+          externalScores.append(badge);
+        }
+      }
       const sourceLink = card.querySelector('.entry-source');
       sourceLink.hidden = !hasSource;
-      sourceLink.textContent = hasWikidata ? 'Данные Wikidata' : 'Данные TVmaze';
-      if (hasSource) sourceLink.href = hasWikidata ? `https://www.wikidata.org/wiki/${entry.wikidataId}` : `https://www.tvmaze.com/shows/${entry.tvmazeId}`;
+      sourceLink.textContent = hasPoiskkino ? 'Данные ПоискКино' : hasWikidata ? 'Данные Wikidata' : 'Данные TVmaze';
+      if (hasSource) sourceLink.href = hasPoiskkino ? 'https://poiskkino.dev' : hasWikidata ? `https://www.wikidata.org/wiki/${entry.wikidataId}` : `https://www.tvmaze.com/shows/${entry.tvmazeId}`;
       card.querySelector('.entry-comment').textContent = entry.comment;
       card.querySelector('.entry-comment').hidden = !entry.comment;
       card.querySelector('.entry-art > span').textContent = { 'Фильм': '▶', 'Сериал': '▤', 'Мультфильм': '✳', 'Другое': '◈' }[entry.category];
@@ -616,14 +626,21 @@
     error.hidden = !text;
   }
 
+  const durationUnitSelect = document.querySelector('#duration-unit-select');
+  let automaticDurationUnit = true;
   function updateDurationUnit() {
-    const seasons = document.querySelector('#category').value === 'Сериал';
+    const seasons = durationUnitSelect.value === 'seasons';
     document.querySelector('#duration-unit').textContent = seasons ? 'В сезонах' : 'В минутах';
     document.querySelector('#duration').placeholder = seasons ? '2' : '120';
     const value = document.querySelector('#duration').value.trim();
     if (value) setFieldError('duration', /^[1-9]\d{0,3}$/.test(value) ? '' : 'Введите целое число от 1 до 9999');
   }
-  document.querySelector('#category').addEventListener('change', updateDurationUnit);
+  document.querySelector('#category').addEventListener('change', () => {
+    if (automaticDurationUnit) durationUnitSelect.value = document.querySelector('#category').value === 'Сериал' ? 'seasons' : 'minutes';
+    updateDurationUnit();
+  });
+  durationUnitSelect.addEventListener('change', () => { automaticDurationUnit = false; updateDurationUnit(); });
+  form.addEventListener('reset', () => { automaticDurationUnit = true; });
   for (const id of validatedFields) {
     document.querySelector(`#${id}`).addEventListener('input', () => setFieldError(id));
   }
@@ -656,7 +673,7 @@
       title: title.length >= 1 && title.length <= 160 ? '' : 'Введите название от 1 до 160 символов',
       category: ['Фильм', 'Сериал', 'Мультфильм'].includes(category) ? '' : 'Выберите категорию из списка',
       year: /^[1-9]\d{3}$/.test(year) ? '' : 'Введите год четырьмя цифрами от 1000 до 9999',
-      'catalog-rating': /^\d{1,2}(?:\.\d)?$/.test(rawRating) && Number(rawRating) <= 10 ? '' : 'Введите рейтинг от 0.0 до 10.0, не более одной цифры после точки',
+      'catalog-rating': !rawRating || (/^\d{1,2}(?:\.\d)?$/.test(rawRating) && Number(rawRating) <= 10) ? '' : 'Введите рейтинг от 0.0 до 10.0, не более одной цифры после точки',
       duration: /^[1-9]\d{0,3}$/.test(rawDuration) ? '' : 'Введите целое число от 1 до 9999',
     };
     for (const id of validatedFields) setFieldError(id, errors[id]);
@@ -669,9 +686,9 @@
     const entry = {
       id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title, category, year,
-      catalogRating: Number(rawRating),
+      catalogRating: rawRating ? Number(rawRating) : null,
       duration: Number(rawDuration),
-      durationUnit: category === 'Сериал' ? 'seasons' : 'minutes',
+      durationUnit: ['seasons', 'minutes'].includes(values.get('durationUnit')) ? values.get('durationUnit') : category === 'Сериал' ? 'seasons' : 'minutes',
       origin: 'user',
       status,
       ...(status === 'watched' ? { watchedOn: monthly.today() } : {}),
