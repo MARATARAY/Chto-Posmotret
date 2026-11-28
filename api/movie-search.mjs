@@ -1,25 +1,6 @@
-const ENDPOINTS = {
-  poiskkino: 'https://api.poiskkino.dev/v1.5/movie/search',
-  'kinopoisk-unofficial': 'https://kinopoiskapiunofficial.tech/api/v2.2/films'
-};
+import { createRequire } from 'node:module';
+const { ENDPOINTS, adaptResponse } = createRequire(import.meta.url)('../movie-api.js');
 const unavailable = 'Поиск недоступен. Заполните форму вручную';
-
-function adaptItem(item, provider) {
-  if (provider === 'kinopoisk-unofficial') {
-    const series = ['TV_SERIES', 'MINI_SERIES'].includes(item.type);
-    const animation = Array.isArray(item.genres) && item.genres.some(genre => typeof genre?.genre === 'string'
-      && ['мультфильм', 'аниме'].includes(genre.genre.toLocaleLowerCase('ru-RU')));
-    return { provider, id: item.kinopoiskId, name: item.nameRu, alternativeName: item.nameOriginal,
-      year: item.year, rating: { kp: item.ratingKinopoisk, imdb: item.ratingImdb },
-      type: animation ? (series ? 'animated-series' : 'cartoon') : series ? 'tv-series' : 'movie',
-      isSeries: series };
-  }
-  return { provider, id: item.id, name: item.name, alternativeName: item.alternativeName, year: item.year,
-    type: item.type, isSeries: item.isSeries, movieLength: item.movieLength,
-    seasonsInfo: Array.isArray(item.seasonsInfo) ? item.seasonsInfo.slice(0, 9999).map(season => ({ number: season?.number })) : [],
-    rating: { kp: item.rating?.kp, imdb: item.rating?.imdb }
-  };
-}
 
 // Dependencies can be replaced in isolated tests; the deployed handler uses native APIs.
 export function createSearchHandler({ getProvider = () => process.env.MOVIE_API_PROVIDER || 'poiskkino',
@@ -75,10 +56,8 @@ export function createSearchHandler({ getProvider = () => process.env.MOVIE_API_
         } : {});
       }
       const body = await response.json();
-      const rows = provider === 'kinopoisk-unofficial' ? body?.items : body?.docs;
-      if (body?.error || !Array.isArray(rows)) return json(502, { error: unavailable });
-      // Only public fields used by the form are returned; no provider headers or error bodies.
-      const data = { docs: rows.slice(0, 20).filter(item => item && typeof item === 'object').map(item => adaptItem(item, provider)) };
+      // Return only the public fields consumed by the form.
+      const data = adaptResponse(body, provider);
       if (cache.size >= 100) cache.delete(cache.keys().next().value);
       cache.set(cacheKey, { data, expires: time + 300000 });
       return json(200, data);

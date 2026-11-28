@@ -23,7 +23,7 @@
       duration: length ? String(item.movieLength) : series ? String(seasons.size || 1) : '',
       durationUnit: !length && series ? 'seasons' : 'minutes', durationDefault: !length && series && !seasons.size };
   }
-  function init({ document, fetch, setTimeout, clearTimeout, AbortController, Event, protocol = 'https:', now = Date.now }) {
+  function init({ document, fetch, setTimeout, clearTimeout, AbortController, Event, protocol = 'https:', localSearch = false, now = Date.now }) {
     const title = document.querySelector('#title');
     const form = document.querySelector('#title-form');
     const list = document.querySelector('#title-suggestions');
@@ -160,7 +160,7 @@
       close(); status.textContent = '';
       const query = title.value.trim();
       if (composing || query.length < 3 || query.length > 160) return;
-      if (protocol === 'file:') { status.textContent = 'Онлайн-поиск доступен на опубликованном сайте'; return; }
+      if (protocol === 'file:' && !localSearch) { status.textContent = 'Локальный ключ поиска не настроен. Заполните форму вручную'; return; }
       const token = version;
       timer = setTimeout(() => search(query, token), 400);
     }
@@ -192,6 +192,24 @@
     } };
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { init, normalize, ratingText };
-  else window.KadrOnlineSearch = init({ document, fetch: window.fetch.bind(window), setTimeout, clearTimeout, AbortController, Event,
-    protocol: window.location.protocol });
+  else {
+    function start(localConfig) {
+      const directFetch = window.location.protocol === 'file:'
+        ? window.KadrMovieAPI.createLocalFetch(localConfig, window.fetch.bind(window)) : null;
+      window.KadrOnlineSearch = init({ document, fetch: directFetch || window.fetch.bind(window),
+        setTimeout, clearTimeout, AbortController, Event, protocol: window.location.protocol, localSearch: !!directFetch });
+      if (document.querySelector('#title').value.trim()) document.querySelector('#title').dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (window.location.protocol === 'file:') {
+      const configScript = document.createElement('script');
+      configScript.src = 'local-api-config.js';
+      configScript.onload = () => {
+        const config = window.KadrLocalAPI;
+        delete window.KadrLocalAPI;
+        configScript.remove(); start(config);
+      };
+      configScript.onerror = () => { configScript.remove(); start(null); };
+      document.head.append(configScript);
+    } else start(null);
+  }
 })();
