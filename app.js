@@ -23,6 +23,12 @@
   });
   updateMotion();
 
+  const LOCAL_POSTERS = {
+    'матрица': { year: '1999', file: 'matrix.jpeg' },
+    'начало': { year: '2010', file: 'inception.jpg' },
+    'лабиринт фавна': { year: '2006', file: 'pans-labyrinth.jpg' },
+    'интерстеллар': { year: '2014', file: 'interstellar.jpg' }
+  };
   const STORAGE_KEY = 'kadr.watchlist.v1';
   const FAVORITES_KEY = 'kadr.favorites.v1';
   const favoritesMessage = document.querySelector('#favorites-message');
@@ -211,6 +217,23 @@
       card.querySelector('.entry-comment').hidden = !entry.comment;
       card.querySelector('.entry-art > span').textContent = { 'Фильм': '▶', 'Сериал': '▤', 'Мультфильм': '✳', 'Другое': '◈' }[entry.category];
       card.querySelector('.entry-art > small').textContent = 'КАДР';
+      const posterKey = entry.title.trim().toLocaleLowerCase('ru-RU').replace(/\s+/g, ' ');
+      const localPoster = Object.hasOwn(LOCAL_POSTERS, posterKey) ? LOCAL_POSTERS[posterKey] : null;
+      const posterMatch = entry.category === 'Фильм' && localPoster
+        && (entry.year === undefined || entry.year === null || entry.year === '' || String(entry.year) === localPoster.year);
+      const poster = card.querySelector('.entry-poster');
+      const art = card.querySelector('.entry-art');
+      const showPoster = visible => {
+        poster.hidden = !visible;
+        art.classList.toggle('has-poster', visible);
+        card.querySelector('.entry-art > span').hidden = visible;
+        card.querySelector('.entry-art > small').hidden = visible;
+      };
+      showPoster(!!posterMatch);
+      if (posterMatch) {
+        poster.addEventListener('error', () => showPoster(false));
+        poster.src = 'assets/posters/' + localPoster.file;
+      }
       const score = card.querySelector('.entry-rating');
       score.hidden = entry.rating === null;
       if (entry.rating !== null) {

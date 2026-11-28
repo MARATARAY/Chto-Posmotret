@@ -37,6 +37,17 @@ function boot(rawFavorites, options = {}) {
   vm.runInNewContext(source,{document,localStorage,FormData,window:{KadrOnlineSearch:options.onlineSearch,KadrMonthly:options.monthly || monthly,navigator:options.navigator,matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
   return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'title',category:'category',year:'year',catalogRating:'catalog-rating',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
 }
+// Supplied local posters attach at render time without rewriting saved entries.
+const posterEntries=[['Матрица','1999','matrix.jpeg'],['Начало','2010','inception.jpg'],['Лабиринт Фавна','2006','pans-labyrinth.jpg'],['  интерстеллар  ',undefined,'interstellar.jpg']].map(([title,year,file],i)=>({id:'poster-'+i,title,year,file,category:'Фильм',status:'planned',rating:null,comment:'keep',createdAt:1000-i}));
+const posterApp=boot(null,{entries:posterEntries});
+posterApp.list.children.forEach((card,i)=>{assert.equal(card.querySelector('.entry-poster').src,'assets/posters/'+posterEntries[i].file);assert.equal(card.querySelector('.entry-poster').hidden,false);});
+assert.deepEqual(posterApp.saved(),JSON.parse(JSON.stringify(posterEntries)));
+posterApp.favorite(0);posterApp.view('favorites');assert.equal(posterApp.list.children[0].querySelector('.entry-poster').hidden,false);
+const posterReload=boot(null,{entries:posterApp.saved()});assert.equal(posterReload.list.children[3].querySelector('.entry-poster').src,'assets/posters/interstellar.jpg');
+posterReload.list.children[0].querySelector('.entry-poster').handlers.error();assert.equal(posterReload.list.children[0].querySelector('.entry-poster').hidden,true);assert.equal(posterReload.list.children[0].querySelector('.entry-art > span').hidden,false);
+for(const change of [{category:'Сериал'},{year:'2026'},{title:'Матрица: Перезагрузка'},{title:'toString'}]){const unmatched=boot(null,{entries:[{...posterEntries[0],...change}]});assert.equal(unmatched.list.children[0].querySelector('.entry-poster').hidden,true);}
+const spacedPoster=boot(null,{entries:[{...posterEntries[2],title:' ЛАБИРИНТ   ФАВНА '}]});assert.equal(spacedPoster.list.children[0].querySelector('.entry-poster').src,'assets/posters/pans-labyrinth.jpg');
+console.log('PASS: four local posters, legacy titles, years/categories, favorites/reload, unchanged storage and image failure fallback.');
 // Spec 001: initialize once, preserve saved catalogs, combine search and category.
 const freshCatalog=boot(null,{fresh:true});
 assert.equal(freshCatalog.count(),'6');
