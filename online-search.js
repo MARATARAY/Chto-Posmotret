@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const { safePosterURL } = typeof module !== 'undefined' && module.exports ? require('./movie-api.js') : window.KadrMovieAPI;
   const UNAVAILABLE = 'Поиск недоступен. Заполните форму вручную';
   const LIMITED = 'Лимит поиска исчерпан. Попробуйте позже';
   const externalRating = value => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 10 ? value : null;
@@ -20,6 +21,7 @@
       originalTitle: !(typeof item.name === 'string' && item.name.trim()),
       year: Number.isInteger(item.year) && /^[1-9]\d{3}$/.test(String(item.year)) ? String(item.year) : '',
       kpRating: externalRating(item.rating?.kp), imdbRating: externalRating(item.rating?.imdb),
+      posterUrl: safePosterURL(item.posterUrl),
       duration: length ? String(item.movieLength) : series ? String(seasons.size || 1) : '',
       durationUnit: !length && series ? 'seasons' : 'minutes', durationDefault: !length && series && !seasons.size };
   }
@@ -31,6 +33,9 @@
     const source = document.querySelector('#title-source');
     const kpField = document.querySelector('#kp-rating');
     const imdbField = document.querySelector('#imdb-rating');
+    const preview = document.querySelector('#poster-preview');
+    const previewFrame = document.querySelector('#poster-preview-frame');
+    let previewVersion = 0;
     const fields = ['category', 'year', 'duration', 'duration-unit-select'].map(id => document.querySelector(`#${id}`));
     const cache = new Map();
     let timer, controller, version = 0, options = [], active = -1, composing = false, imported = null, retryAt = 0;
@@ -47,6 +52,30 @@
         badge.textContent = `${label}: ${ratingText(value)}`; host.append(badge);
       }
     }
+    function resetPoster() {
+      previewVersion++; preview.hidden = true; previewFrame.replaceChildren();
+    }
+    function previewPoster(show) {
+      resetPoster(); preview.hidden = false;
+      const current = previewVersion;
+      const fallback = document.createElement('span');
+      fallback.className = 'poster-placeholder';
+      fallback.textContent = show.posterUrl ? 'Загрузка постера…' : 'Нет постера';
+      previewFrame.append(fallback);
+      if (!show.posterUrl) return;
+      const img = document.createElement('img');
+      img.alt = 'Постер: ' + show.title; img.hidden = true;
+      img.decoding = 'async'; img.referrerPolicy = 'no-referrer';
+      img.addEventListener('load', () => {
+        if (current !== previewVersion) return;
+        img.hidden = false; fallback.hidden = true;
+      });
+      img.addEventListener('error', () => {
+        if (current !== previewVersion) return;
+        img.hidden = true; fallback.hidden = false; fallback.textContent = 'Нет постера';
+      });
+      previewFrame.append(img); img.src = show.posterUrl;
+    }
     function detach() {
       if (!imported) return;
       const previous = imported; imported = null;
@@ -56,7 +85,7 @@
           field.dispatchEvent(new Event('change', { bubbles: true }));
         }
       });
-      source.hidden = true; kpField.value = ''; imdbField.value = '';
+      source.hidden = true; kpField.value = ''; imdbField.value = ''; resetPoster();
     }
     fields.forEach(field => {
       for (const event of ['input', 'change']) field.addEventListener(event, () => {
@@ -74,6 +103,7 @@
         field.value = values[i]; field.dispatchEvent(new Event('change', { bubbles: true }));
       });
       imported = { ...show, values, edited: new Set() };
+      previewPoster(show);
       source.href = show.provider === 'kinopoisk-unofficial' ? 'https://kinopoiskapiunofficial.tech' : 'https://poiskkino.dev';
       source.textContent = show.provider === 'kinopoisk-unofficial' ? 'Данные Kinopoisk Unofficial' : 'Данные ПоискКино';
       source.hidden = false;
@@ -183,12 +213,12 @@
       }
     });
     title.addEventListener('blur', () => { close(); status.textContent = ''; });
-    form.addEventListener('reset', () => { close(); imported = null; source.hidden = true; kpField.value = ''; imdbField.value = ''; status.textContent = ''; });
+    form.addEventListener('reset', () => { close(); imported = null; source.hidden = true; kpField.value = ''; imdbField.value = ''; status.textContent = ''; resetPoster(); });
     return { getMetadata() {
       if (!imported || title.value !== imported.title) return {};
       return { ratingProvider: imported.provider,
         ...(imported.provider === 'kinopoisk-unofficial' ? { kinopoiskId: imported.id } : { poiskkinoId: imported.id }),
-        kpRating: imported.kpRating, imdbRating: imported.imdbRating };
+        kpRating: imported.kpRating, imdbRating: imported.imdbRating, posterUrl: imported.posterUrl };
     } };
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { init, normalize, ratingText };

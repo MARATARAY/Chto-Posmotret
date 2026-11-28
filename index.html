@@ -7,9 +7,9 @@
     <title>Кадр — мой список просмотра</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="monthly-summary.js" defer></script>
+    <script src="movie-api.js" defer></script>
     <script src="app.js" defer></script>
     <script src="seasonal-animation.js" defer></script>
-    <script src="movie-api.js" defer></script>
     <script src="online-search.js" defer></script>
   </head>
   <body>
@@ -91,11 +91,14 @@
               <div class="field"><label for="category">Категория <span class="required">*</span></label><select id="category" name="category" required aria-describedby="category-error"><option>Фильм</option><option>Сериал</option><option>Мультфильм</option></select><span id="category-error" class="field-error" hidden></span></div>
               <fieldset class="field status-field"><legend>Статус</legend><div class="status-control"><label><input type="radio" name="status" value="planned" checked /><span>Хочу посмотреть</span></label><label><input type="radio" name="status" value="watched" /><span>Посмотрел</span></label></div></fieldset>
             </div>
+            <div class="details-and-poster">
+            <figure id="poster-preview" class="poster-preview" hidden><div id="poster-preview-frame" class="poster-preview-frame"></div><figcaption>Постер выбранного произведения</figcaption></figure>
             <div class="card-details-fields">
               <div class="field"><label for="year">Год <span class="required">*</span></label><input id="year" name="year" type="text" inputmode="numeric" placeholder="2024" required aria-describedby="year-error" /><span id="year-error" class="field-error" hidden></span></div>
               <div class="field"><label for="kp-rating">Рейтинг Кинопоиск</label><input id="kp-rating" type="text" placeholder="—" readonly aria-describedby="kp-rating-hint" /><span id="kp-rating-hint" class="field-hint">Из онлайн-поиска; «—» — нет оценки</span></div>
               <div class="field"><label for="imdb-rating">Рейтинг IMDb</label><input id="imdb-rating" type="text" placeholder="—" readonly aria-describedby="imdb-rating-hint" /><span id="imdb-rating-hint" class="field-hint">Из онлайн-поиска; «—» — нет оценки</span></div>
               <div class="field"><label for="duration">Длительность <span class="required">*</span></label><input id="duration" name="duration" type="text" inputmode="numeric" placeholder="120" required aria-describedby="duration-unit duration-error" /><label for="duration-unit-select" class="sr-only">Единица длительности</label><select id="duration-unit-select" name="durationUnit" aria-label="Единица длительности"><option value="minutes">Минуты</option><option value="seasons">Сезоны</option></select><span id="duration-unit" class="field-hint">В минутах</span><span id="duration-error" class="field-error" hidden></span></div>
+            </div>
             </div>
             <div class="form-bottom">
               <div class="field comment-field"><label for="comment">Комментарий / впечатления <span class="optional">необязательно</span></label><textarea id="comment" name="comment" rows="2" maxlength="3000" aria-describedby="comment-error" placeholder="Почему стоит посмотреть или чем запомнилось?"></textarea><span id="comment-error" class="field-error" hidden></span></div>
@@ -144,7 +147,7 @@
       </main>
       <footer class="site-footer"><span class="footer-brand">кадр.</span><span>Жизнь слишком коротка для плохого кино.</span><span>Ваша следующая история уже ждёт <span class="footer-star">✳</span></span></footer>
     </div>
-    <template id="entry-template"><article class="entry"><div class="entry-art" aria-hidden="true"><img class="entry-poster" alt="" loading="lazy" decoding="async" hidden /><span></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-details" hidden></p><div class="entry-source-ratings source-ratings" hidden></div><a class="entry-source" target="_blank" rel="noopener noreferrer" hidden>Данные Wikidata</a><p class="entry-comment"></p><div class="entry-actions"><button class="entry-watch watch-button" type="button" aria-expanded="false">Смотреть</button><button class="entry-status" type="button"></button><button class="entry-favorite" type="button" aria-pressed="false">В избранное</button><button class="entry-review-toggle" type="button" aria-expanded="false">Оценка и заметка</button></div><section class="entry-watch-panel watch-links" hidden><h3 class="entry-watch-heading"></h3><div class="entry-watch-platforms watch-platforms"></div><p>На площадках откроется поиск по названию; YouTube — главная страница</p><p class="entry-watch-error watch-error" role="alert"></p></section></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить карточку" title="Удалить карточку">×</button></div></article></template>
+    <template id="entry-template"><article class="entry"><div class="entry-art"><img class="entry-poster" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" hidden /><span aria-hidden="true"></span><small></small></div><div class="entry-body"><div class="entry-meta"><span class="entry-category"></span><span class="meta-dot">·</span><span class="entry-date"></span></div><h3 class="entry-title"></h3><p class="entry-details" hidden></p><div class="entry-source-ratings source-ratings" hidden></div><a class="entry-source" target="_blank" rel="noopener noreferrer" hidden>Данные Wikidata</a><p class="entry-comment"></p><div class="entry-actions"><button class="entry-watch watch-button" type="button" aria-expanded="false">Смотреть</button><button class="entry-status" type="button"></button><button class="entry-favorite" type="button" aria-pressed="false">В избранное</button><button class="entry-review-toggle" type="button" aria-expanded="false">Оценка и заметка</button></div><section class="entry-watch-panel watch-links" hidden><h3 class="entry-watch-heading"></h3><div class="entry-watch-platforms watch-platforms"></div><p>На площадках откроется поиск по названию; YouTube — главная страница</p><p class="entry-watch-error watch-error" role="alert"></p></section></div><div class="entry-side"><span class="entry-rating"></span><button class="delete-button" type="button" aria-label="Удалить карточку" title="Удалить карточку">×</button></div></article></template>
     <template id="watched-date-template">
       <form class="watched-date-form" novalidate hidden>
         <div class="field"><label class="watched-date-label">Дата просмотра</label><input class="watched-date-input" type="date" required /><span class="watched-date-hint"></span><span class="watched-date-error" role="alert" hidden></span></div>

@@ -5,6 +5,14 @@ const ENDPOINTS = {
   'kinopoisk-unofficial': 'https://kinopoiskapiunofficial.tech/api/v2.2/films'
 };
 
+function safePosterURL(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
+}
+
 function adaptItem(item, provider) {
   if (provider === 'kinopoisk-unofficial') {
     const series = ['TV_SERIES', 'MINI_SERIES'].includes(item.type);
@@ -13,12 +21,13 @@ function adaptItem(item, provider) {
     return { provider, id: item.kinopoiskId, name: item.nameRu, alternativeName: item.nameOriginal,
       year: item.year, rating: { kp: item.ratingKinopoisk, imdb: item.ratingImdb },
       type: animation ? (series ? 'animated-series' : 'cartoon') : series ? 'tv-series' : 'movie',
-      isSeries: series };
+      isSeries: series, posterUrl: safePosterURL(item.posterUrlPreview) || safePosterURL(item.posterUrl) };
   }
   return { provider, id: item.id, name: item.name, alternativeName: item.alternativeName, year: item.year,
     type: item.type, isSeries: item.isSeries, movieLength: item.movieLength,
     seasonsInfo: Array.isArray(item.seasonsInfo) ? item.seasonsInfo.slice(0, 9999).map(season => ({ number: season?.number })) : [],
-    rating: { kp: item.rating?.kp, imdb: item.rating?.imdb }
+    rating: { kp: item.rating?.kp, imdb: item.rating?.imdb },
+    posterUrl: safePosterURL(item.poster?.previewUrl) || safePosterURL(item.poster?.url)
   };
 }
 
@@ -44,7 +53,7 @@ function createLocalFetch(config, fetcher) {
       headers: response.headers, json: async () => adaptResponse(await response.json(), provider) };
   };
 }
-const api = { ENDPOINTS, adaptResponse, createLocalFetch };
+const api = { ENDPOINTS, adaptResponse, createLocalFetch, safePosterURL };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else window.KadrMovieAPI = api;
 })();

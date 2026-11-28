@@ -311,16 +311,24 @@
         && (entry.year === undefined || entry.year === null || entry.year === '' || String(entry.year) === localPoster.year);
       const poster = card.querySelector('.entry-poster');
       const art = card.querySelector('.entry-art');
+      const hasSavedPoster = Object.hasOwn(entry, 'posterUrl');
+      const posterSrc = hasSavedPoster ? window.KadrMovieAPI.safePosterURL(entry.posterUrl)
+        : posterMatch ? 'assets/posters/' + localPoster.file : null;
+      art.classList.toggle('poster-frame', hasSavedPoster || !!posterSrc);
+      if (hasSavedPoster) {
+        card.querySelector('.entry-art > span').textContent = '🎬';
+        card.querySelector('.entry-art > small').textContent = 'Нет постера';
+      }
       const showPoster = visible => {
         poster.hidden = !visible;
         art.classList.toggle('has-poster', visible);
         card.querySelector('.entry-art > span').hidden = visible;
         card.querySelector('.entry-art > small').hidden = visible;
       };
-      showPoster(!!posterMatch);
-      if (posterMatch) {
+      showPoster(!!posterSrc);
+      if (posterSrc) {
         poster.addEventListener('error', () => showPoster(false));
-        poster.src = 'assets/posters/' + localPoster.file;
+        poster.src = posterSrc;
       }
       const entryWatch = card.querySelector('.entry-watch');
       const entryPanel = card.querySelector('.entry-watch-panel');
@@ -689,6 +697,7 @@
       id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title, category, year,
       catalogRating: null,
+      posterUrl: null,
       duration: Number(rawDuration),
       durationUnit: ['seasons', 'minutes'].includes(values.get('durationUnit')) ? values.get('durationUnit') : category === 'Сериал' ? 'seasons' : 'minutes',
       origin: 'user',
