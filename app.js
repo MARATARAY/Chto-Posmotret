@@ -190,8 +190,10 @@
       card.querySelector('.entry-title').textContent = entry.title;
       card.querySelector('.entry-category').textContent = entry.category;
       card.querySelector('.entry-date').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(entry.createdAt);
-      const hasSource = Number.isSafeInteger(entry.tvmazeId) && entry.tvmazeId > 0;
-      const ratingLabel = hasSource && entry.ratingSource === 'TVmaze' ? 'Рейтинг TVmaze' : 'Рейтинг';
+      const hasWikidata = typeof entry.wikidataId === 'string' && /^Q[1-9]\d*$/.test(entry.wikidataId);
+      const hasTVmaze = Number.isSafeInteger(entry.tvmazeId) && entry.tvmazeId > 0;
+      const hasSource = hasWikidata || hasTVmaze;
+      const ratingLabel = !hasWikidata && hasTVmaze && entry.ratingSource === 'TVmaze' ? 'Рейтинг TVmaze' : 'Рейтинг';
       const details = [];
       if (/^[1-9]\d{3}$/.test(String(entry.year ?? ''))) details.push(String(entry.year));
       if (Number.isFinite(entry.catalogRating) && entry.catalogRating >= 0 && entry.catalogRating <= 10) details.push(`${ratingLabel} ${entry.catalogRating.toFixed(1)}`);
@@ -203,7 +205,8 @@
       detailLine.hidden = details.length === 0;
       const sourceLink = card.querySelector('.entry-source');
       sourceLink.hidden = !hasSource;
-      if (hasSource) sourceLink.href = `https://www.tvmaze.com/shows/${entry.tvmazeId}`;
+      sourceLink.textContent = hasWikidata ? 'Данные Wikidata' : 'Данные TVmaze';
+      if (hasSource) sourceLink.href = hasWikidata ? `https://www.wikidata.org/wiki/${entry.wikidataId}` : `https://www.tvmaze.com/shows/${entry.tvmazeId}`;
       card.querySelector('.entry-comment').textContent = entry.comment;
       card.querySelector('.entry-comment').hidden = !entry.comment;
       card.querySelector('.entry-art > span').textContent = { 'Фильм': '▶', 'Сериал': '▤', 'Мультфильм': '✳', 'Другое': '◈' }[entry.category];

@@ -2,17 +2,21 @@
   'use strict';
   const UNAVAILABLE = 'Поиск недоступен. Заполните форму вручную';
   const LIMITED = 'Слишком много запросов. Попробуйте позже или заполните форму вручную';
-  function normalize(show) {
-    if (!Number.isSafeInteger(show?.id) || show.id <= 0 || typeof show.name !== 'string'
-      || !show.name.trim() || show.name.trim().length > 160) return null;
-    let year = '';
-    if (typeof show.premiered === 'string' && /^[1-9]\d{3}-\d{2}-\d{2}$/.test(show.premiered)) {
-      const date = new Date(`${show.premiered}T00:00:00Z`);
-      if (Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === show.premiered) year = show.premiered.slice(0, 4);
-    }
-    return { id: show.id, title: show.name.trim(), year, category: 'Сериал',
-      rating: Number.isFinite(show.rating?.average) && show.rating.average >= 0 && show.rating.average <= 10
-        ? show.rating.average.toFixed(1) : '' };
+  function normalize(item, currentYear = new Date().getFullYear()) {
+    if (!item || typeof item.id !== 'string' || !/^Q[1-9]\d*$/.test(item.id)
+      || typeof item.label !== 'string' || !item.label.trim() || item.label.trim().length > 160
+      || typeof item.description !== 'string') return null;
+    const description = item.description.toLocaleLowerCase('ru-RU');
+    // Exclude explicit non-screen entities even when their description mentions cinema.
+    if (/(?:^|[^\p{L}])(?:роман|книга|видеоигра|игра|актёр|актер|актриса|режиссёр|режиссер|писатель)(?=$|[^\p{L}])/u.test(description)) return null;
+    const category = ['мультфильм', 'анимационный', 'мультсериал', 'аниме'].some(word => description.includes(word)) ? 'Мультфильм'
+      : ['телесериал', 'сериал', 'мини-сериал'].some(word => description.includes(word)) ? 'Сериал'
+      : ['фильм', 'кинофильм', 'комедия', 'триллер', 'боевик', 'фантастика', 'драма'].some(word => description.includes(word)) ? 'Фильм' : '';
+    if (!category) return null;
+    const year = item.description.match(/\b(19|20)\d{2}\b/);
+    return { id: item.id, title: item.label.trim(), description: item.description, category,
+      year: year ? year[0] : String(currentYear), yearDefault: !year,
+      rating: '0.0', duration: category === 'Сериал' ? '1' : '120' };
   }
   function init({ document, fetch, setTimeout, clearTimeout, AbortController, Event, now = Date.now }) {
     const title = document.querySelector('#title');
@@ -31,8 +35,7 @@
       title.setAttribute('aria-busy', 'false');
     }
     function labelRating() {
-      ratingLabel.textContent = imported && imported.rating && !imported.edited.has('catalog-rating')
-        ? 'Рейтинг TVmaze' : 'Рейтинг';
+      ratingLabel.textContent = 'Рейтинг';
     }
     function detach() {
       if (!imported) return;
@@ -54,22 +57,22 @@
       if (!show) return;
       close(); imported = null;
       title.value = show.title;
-      const values = [show.category, show.year, show.rating, ''];
+      const values = [show.category, show.year, show.rating, show.duration];
       fields.forEach((field, i) => {
         field.value = values[i]; field.dispatchEvent(new Event('change', { bubbles: true }));
       });
       imported = { ...show, values, edited: new Set() };
-      source.href = `https://www.tvmaze.com/shows/${show.id}`; source.hidden = false;
+      source.href = `https://www.wikidata.org/wiki/${show.id}`; source.hidden = false;
       labelRating(); title.focus();
-      status.textContent = 'Недостающие данные заполните вручную: укажите длительность в сезонах'
-        + (!show.year || !show.rating ? ', год и рейтинг при их отсутствии.' : '.');
+      status.textContent = 'Данные заполнены. Рейтинг 0.0 и длительность заданы по умолчанию'
+        + (show.yearDefault ? ', год — текущий' : '') + '. Проверьте поля перед добавлением.';
     }
     function showOptions(items) {
       options = items;
       options.forEach((show, i) => {
         const item = document.createElement('li');
         item.id = `title-option-${i}`; item.setAttribute('role', 'option'); item.setAttribute('aria-selected', 'false');
-        item.textContent = `${show.title} · ${show.year || 'Год не указан'} · ${show.rating ? `Рейтинг TVmaze ${show.rating}` : 'Нет оценки'} · ${show.category}`;
+        item.textContent = `${show.title} · ${show.year}${show.yearDefault ? ' (текущий год)' : ''} · Рейтинг 0.0 (по умолчанию) · ${show.category}`;
         // Keep input focus until click, including taps, so blur cannot discard the selection.
         item.addEventListener('pointerdown', event => event.preventDefault());
         item.addEventListener('mousedown', event => event.preventDefault());
@@ -90,7 +93,7 @@
       try {
         const data = await Promise.race([
           (async () => {
-            const response = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(query)}`,
+            const response = await fetch(`https://www.wikidata.org/w/api.php?action=wbsearchentities&language=ru&uselang=ru&type=item&format=json&origin=*&limit=20&search=${encodeURIComponent(query)}`,
               { method: 'GET', signal: pendingController.signal, credentials: 'omit', referrerPolicy: 'no-referrer' });
             if (response.status === 429) {
               if (token !== version) throw new Error('stale');
@@ -109,10 +112,10 @@
           })
         ]);
         if (token !== version) return;
-        if (!Array.isArray(data)) throw new Error('data');
+        if (data?.error || !Array.isArray(data?.search)) throw new Error('data');
         const seen = new Set(); const items = [];
-        for (const row of data) {
-          const show = normalize(row?.show);
+        for (const row of data.search) {
+          const show = normalize(row, new Date(now()).getFullYear());
           if (!show || seen.has(show.id)) continue;
           seen.add(show.id); items.push(show);
           if (items.length === 5) break;
@@ -157,8 +160,7 @@
     form.addEventListener('reset', () => { close(); imported = null; source.hidden = true; status.textContent = ''; labelRating(); });
     return { getMetadata() {
       if (!imported || title.value !== imported.title) return {};
-      const unchangedRating = !imported.edited.has('catalog-rating') && fields[2].value === imported.rating && imported.rating !== '';
-      return { tvmazeId: imported.id, ...(unchangedRating ? { ratingSource: 'TVmaze' } : {}) };
+      return { wikidataId: imported.id };
     } };
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { init, normalize };

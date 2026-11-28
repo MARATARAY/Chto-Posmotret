@@ -117,6 +117,15 @@ const importedReload=boot(null,{entries:importedCard.saved()});assert.equal(impo
 importedReload.list.children[0].querySelector('.delete-button').click();importedReload.ids['#form-message'].children[0].click();assert.equal(importedReload.saved()[0].tvmazeId,315);
 const manualRating=boot(null,{entries:[{...importedCard.saved()[0],ratingSource:undefined}]});assert.ok(!manualRating.list.children[0].querySelector('.entry-details').textContent.includes('Рейтинг TVmaze'));assert.equal(manualRating.list.children[0].querySelector('.entry-source').hidden,false);
 const unsafeSource=boot(null,{entries:[{...importedCard.saved()[0],tvmazeId:'javascript:alert(1)'}]});assert.equal(unsafeSource.list.children[0].querySelector('.entry-source').hidden,true);
+const wikiCard=boot(null,{entries:[],onlineSearch:{getMetadata:()=>({wikidataId:'Q13417189'})}});
+wikiCard.submit({...valid,title:'Интерстеллар',catalogRating:'0.0',duration:'120'});
+assert.equal(wikiCard.saved()[0].wikidataId,'Q13417189');assert.equal(wikiCard.saved()[0].catalogRating,0);
+assert.equal(wikiCard.list.children[0].querySelector('.entry-source').href,'https://www.wikidata.org/wiki/Q13417189');
+assert.equal(wikiCard.list.children[0].querySelector('.entry-source').textContent,'Данные Wikidata');
+assert.ok(!wikiCard.list.children[0].querySelector('.entry-details').textContent.includes('Рейтинг Wikidata'));
+const wikiReload=boot(null,{entries:wikiCard.saved()});wikiReload.list.children[0].querySelector('.delete-button').click();wikiReload.ids['#form-message'].children[0].click();assert.equal(wikiReload.saved()[0].wikidataId,'Q13417189');
+const badWiki=boot(null,{entries:[{...wikiCard.saved()[0],wikidataId:'Q1/../../evil'}]});assert.equal(badWiki.list.children[0].querySelector('.entry-source').hidden,true);
+console.log('PASS: Wikidata metadata/defaults persist through reload/delete/undo; legacy TVmaze sources preserved.');
 console.log('PASS: TVmaze metadata persists through add/reload/delete/undo, attribution and safe source URLs.');
 console.log('PASS: all new fields, decimal normalization, validation boundaries, units/plurals, legacy data, duplicate names/IDs, transactional storage failures, delete/undo/reload, favorites and literal text rendering.');
 
