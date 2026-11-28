@@ -15,9 +15,11 @@ function boot(rawFavorites, options = {}) {
     closest(s) {return s.split(', ').includes(this.kind) || (s==='button[data-view]' && this.dataset.view) || (s==='button[data-category]' && this.dataset.category) ? this : this.parent?.closest(s);}
     focus() {document.activeElement=this;}
     select() {this.selected=true;}
+    submit() { if(options.failPost)throw Error('blocked'); document.posts.push({method:this.method,action:this.action,target:this.target,charset:this.acceptCharset,enctype:this.enctype,rel:this.attrs.rel,parent:this.parent,fields:this.children.map(input=>({name:input.name,value:input.value,type:input.type}))}); }
+    remove() { if(this.parent)this.parent.children=this.parent.children.filter(item=>item!==this);this.parent=null; }
     click() {this.handlers.click?.({target:this});}
   }
-  const ids={}; document={activeElement:null,body:new El(),querySelector(s){return ids[s] ||= new El(s);},querySelectorAll(s){if(s==='[data-view]')return views;if(s==='[data-category].filter-chip')return cats;return [];},createElement(){return new El();},createDocumentFragment(){return new El('fragment');}};
+  const ids={}; document={activeElement:null,posts:[],body:new El(),querySelector(s){return ids[s] ||= new El(s);},querySelectorAll(s){if(s==='[data-view]')return views;if(s==='[data-category].filter-chip')return cats;return [];},createElement(tag){return new El(tag);},createDocumentFragment(){return new El('fragment');}};
   const views=['catalog','favorites','best'].map(view=>{const e=new El();e.dataset.view=view;return e;});
   const cats=['all','Фильм','Сериал','Мультфильм'].map(category=>{const e=new El();e.dataset.category=category;return e;});
   ids['[data-view="favorites"]']=views[1];
@@ -44,10 +46,30 @@ assert.equal(watchUI.ids['#watch-error'].textContent,'Введите назва�
 watchUI.ids['#title'].value='  Матрица  ';watchUI.ids['#title'].handlers.input();assert.equal(watchUI.ids['#watch-error'].hidden,true);
 watchUI.ids['#watch-button'].focus();watchUI.ids['#watch-button'].click();assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: Матрица');assert.equal(watchUI.ids['#watch-button'].attrs['aria-expanded'],'true');assert.equal(watchUI.document.activeElement,watchUI.ids['#watch-button']);assert.equal(watchUI.ids['#watch-links'].hidden,false);
 watchUI.ids['#watch-button'].click();assert.equal(watchUI.store.get('kadr.watchlist.v1'),watchBefore);
-watchUI.ids['#title'].value='Начало';watchUI.ids['#title'].handlers.change();assert.equal(watchUI.ids['#watch-links'].hidden,true);assert.equal(watchUI.ids['#watch-button'].attrs['aria-expanded'],'false');
+watchUI.ids['#title'].value='Начало';watchUI.ids['#title'].handlers.change();assert.equal(watchUI.ids['#watch-links'].hidden,false);assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: Начало');assert.equal(watchUI.ids['#watch-button'].attrs['aria-expanded'],'true');
 watchUI.ids['#title'].value='<b>Фильм & название</b>';watchUI.ids['#watch-button'].click();assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: <b>Фильм & название</b>');
 watchUI.ids['#title-form'].reset();assert.equal(watchUI.ids['#watch-links'].hidden,true);assert.equal(watchUI.ids['#watch-error'].hidden,true);
 console.log('PASS: Watch empty/space error, trim, no submit/storage writes, safe heading, repeat, title input/change and form reset.');
+// Direct searches submit only the requested fields, then clean up outside the add form.
+const direct=boot();const directOriginal=direct.store.get('kadr.watchlist.v1');
+direct.ids['#title'].value='  Матрица & "+" <b>фильм</b>  ';direct.ids['#title'].handlers.input();assert.equal(direct.ids['#watch-links'].hidden,false);assert.equal(direct.document.posts.length,0);
+const platforms=direct.ids['#watch-platforms'].children;assert.equal(platforms.length,4);
+assert.deepEqual(platforms.map(item=>item.textContent),['KinoGo (kino-go.bi)','KinoGo TV (tv.kinogo.mu)','Baskino (baskino.my)','YouTube']);
+assert.equal(platforms[3].href,'https://youtube.com');assert.equal(platforms[3].target,'_blank');assert.equal(platforms[3].rel,'noopener noreferrer');
+for(let i=0;i<3;i++){
+  platforms[i].click();const post=direct.document.posts[i];
+  assert.equal(post.method,'POST');assert.equal(post.target,'_blank');assert.equal(post.charset,'UTF-8');assert.equal(post.enctype,'application/x-www-form-urlencoded');assert.equal(post.rel,'noopener noreferrer');assert.equal(post.parent,direct.document.body);
+  assert.deepEqual(post.fields,[{name:'do',value:'search',type:'hidden'},{name:'subaction',value:'search',type:'hidden'},{name:'story',value:'Матрица & "+" <b>фильм</b>',type:'hidden'}]);assert.equal(direct.document.body.children.length,0);
+}
+assert.deepEqual(direct.document.posts.map(post=>post.action),['https://kino-go.bi/index.php?do=search','https://tv.kinogo.mu/index.php?do=search','https://baskino.my/index.php?do=search']);
+direct.ids['#title'].value='Новое название';platforms[0].click();assert.equal(direct.document.posts[3].fields[2].value,'Новое название');
+const card=direct.list.children[0];card.querySelector('.entry-watch').click();assert.equal(card.querySelector('.entry-watch-panel').hidden,false);assert.equal(card.querySelector('.entry-watch').attrs['aria-expanded'],'true');
+card.querySelector('.entry-watch-platforms').children[1].click();assert.equal(direct.document.posts[4].fields[2].value,direct.entries[0].title);assert.equal(direct.document.posts[4].action,'https://tv.kinogo.mu/index.php?do=search');
+assert.equal(new Set(direct.list.children.map(card=>card.querySelector('.entry-watch-panel').id)).size,direct.list.children.length);
+assert.equal(direct.store.get('kadr.watchlist.v1'),directOriginal);assert.equal(direct.document.body.children.length,0);
+const postFailure=boot(null,{failPost:true});postFailure.ids['#title'].value='Матрица';postFailure.ids['#watch-platforms'].children[0].click();assert.equal(postFailure.ids['#watch-site-error'].textContent,'Не удалось открыть площадку. Попробуйте ещё раз');assert.equal(postFailure.document.body.children.length,0);assert.equal(postFailure.ids['#title'].value,'Матрица');
+direct.ids['#title'].value=' ';direct.ids['#title'].handlers.input();assert.equal(direct.ids['#watch-links'].hidden,true);const postsBefore=direct.document.posts.length;platforms[0].click();assert.equal(direct.document.posts.length,postsBefore);
+console.log('PASS: exact POST actions/raw fields, card title isolation, unique panel IDs, cleanup on success/error, current input and no storage mutations.');
 // Supplied local posters attach at render time without rewriting saved entries.
 const posterEntries=[['Матрица','1999','matrix.jpeg'],['Начало','2010','inception.jpg'],['Лабиринт Фавна','2006','pans-labyrinth.jpg'],['  интерстеллар  ',undefined,'interstellar.jpg']].map(([title,year,file],i)=>({id:'poster-'+i,title,year,file,category:'Фильм',status:'planned',rating:null,comment:'keep',createdAt:1000-i}));
 const posterApp=boot(null,{entries:posterEntries});

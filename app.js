@@ -54,31 +54,78 @@
   let reportText = '';
   let reportVersion = 0;
 
+  const WATCH_ACTIONS = {
+    kinogo: 'https://kino-go.bi/index.php?do=search',
+    kinogoTV: 'https://tv.kinogo.mu/index.php?do=search',
+    baskino: 'https://baskino.my/index.php?do=search'
+  };
+  function sendSiteSearch(provider, name, error) {
+    error.textContent = '';
+    if (!Object.hasOwn(WATCH_ACTIONS, provider) || !name.trim()) return;
+    let temporary;
+    try {
+      temporary = document.createElement('form');
+      temporary.method = 'POST';
+      temporary.action = WATCH_ACTIONS[provider];
+      temporary.target = '_blank';
+      temporary.acceptCharset = 'UTF-8';
+      temporary.enctype = 'application/x-www-form-urlencoded';
+      temporary.setAttribute('rel', 'noopener noreferrer');
+      temporary.hidden = true;
+      for (const [field, value] of [['do', 'search'], ['subaction', 'search'], ['story', name.trim()]]) {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = field; input.value = value;
+        temporary.append(input);
+      }
+      document.body.append(temporary);
+      temporary.submit();
+    } catch {
+      error.textContent = 'Не удалось открыть площадку. Попробуйте ещё раз';
+    } finally {
+      temporary?.remove();
+    }
+  }
+  function populateWatchPlatforms(host, getName, error) {
+    host.replaceChildren();
+    for (const [provider, label] of [['kinogo', 'KinoGo (kino-go.bi)'], ['kinogoTV', 'KinoGo TV (tv.kinogo.mu)'], ['baskino', 'Baskino (baskino.my)']]) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = label;
+      button.addEventListener('click', () => sendSiteSearch(provider, getName(), error));
+      host.append(button);
+    }
+    const youtube = document.createElement('a');
+    youtube.textContent = 'YouTube'; youtube.href = 'https://youtube.com';
+    youtube.target = '_blank'; youtube.rel = 'noopener noreferrer';
+    host.append(youtube);
+  }
   const watchTitle = document.querySelector('#title');
   const watchButton = document.querySelector('#watch-button');
   const watchLinks = document.querySelector('#watch-links');
   const watchError = document.querySelector('#watch-error');
+  const watchSiteError = document.querySelector('#watch-site-error');
+  populateWatchPlatforms(document.querySelector('#watch-platforms'), () => watchTitle.value, watchSiteError);
   function resetWatchLinks() {
     watchLinks.hidden = true;
     watchButton.setAttribute('aria-expanded', 'false');
-    watchError.hidden = true;
-    watchError.textContent = '';
+    watchError.hidden = true; watchError.textContent = ''; watchSiteError.textContent = '';
   }
-  watchButton.addEventListener('click', () => {
+  function updateWatchLinks(showEmptyError = false) {
     resetWatchLinks();
     const name = watchTitle.value.trim();
     if (!name) {
-      watchError.textContent = 'Введите название фильма';
-      watchError.hidden = false;
-      watchTitle.focus();
+      if (showEmptyError) {
+        watchError.textContent = 'Введите название фильма';
+        watchError.hidden = false; watchTitle.focus();
+      }
       return;
     }
     document.querySelector('#watch-heading').textContent = 'Где смотреть: ' + name;
     watchLinks.hidden = false;
     watchButton.setAttribute('aria-expanded', 'true');
-  });
-  watchTitle.addEventListener('input', resetWatchLinks);
-  watchTitle.addEventListener('change', resetWatchLinks);
+  }
+  watchButton.addEventListener('click', () => updateWatchLinks(true));
+  watchTitle.addEventListener('input', () => updateWatchLinks());
+  watchTitle.addEventListener('change', () => updateWatchLinks());
   form.addEventListener('reset', resetWatchLinks);
 
   function isEntry(entry) {
@@ -216,7 +263,7 @@
     emptyButton.textContent = noFavorites || noBest ? 'Открыть каталог' : noEntries ? 'Добавить первый тайтл ↑' : 'Сбросить фильтры ↗';
 
     const fragment = document.createDocumentFragment();
-    for (const entry of visible) {
+    for (const [cardIndex, entry] of visible.entries()) {
       const card = document.querySelector('#entry-template').content.firstElementChild.cloneNode(true);
       card.dataset.category = entry.category;
       card.dataset.id = entry.id;
@@ -261,6 +308,24 @@
         poster.addEventListener('error', () => showPoster(false));
         poster.src = 'assets/posters/' + localPoster.file;
       }
+      const entryWatch = card.querySelector('.entry-watch');
+      const entryPanel = card.querySelector('.entry-watch-panel');
+      const panelId = 'entry-watch-' + cardIndex;
+      entryPanel.id = panelId;
+      entryWatch.setAttribute('aria-controls', panelId);
+      entryWatch.setAttribute('aria-expanded', 'false');
+      entryWatch.setAttribute('aria-label', 'Смотреть: ' + entry.title);
+      entryPanel.hidden = true;
+      const panelHeading = card.querySelector('.entry-watch-heading');
+      panelHeading.id = panelId + '-heading';
+      panelHeading.textContent = 'Где смотреть: ' + entry.title;
+      entryPanel.setAttribute('aria-labelledby', panelHeading.id);
+      populateWatchPlatforms(card.querySelector('.entry-watch-platforms'),
+        () => entries.find(item => item.id === entry.id)?.title || '', card.querySelector('.entry-watch-error'));
+      entryWatch.addEventListener('click', () => {
+        entryPanel.hidden = false;
+        entryWatch.setAttribute('aria-expanded', 'true');
+      });
       const score = card.querySelector('.entry-rating');
       score.hidden = entry.rating === null;
       if (entry.rating !== null) {
