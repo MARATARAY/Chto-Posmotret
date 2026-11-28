@@ -57,6 +57,7 @@
       if (!show) return;
       close(); imported = null;
       title.value = show.title;
+      title.dispatchEvent(new Event('change', { bubbles: true }));
       const values = [show.category, show.year, show.rating, show.duration];
       fields.forEach((field, i) => {
         field.value = values[i]; field.dispatchEvent(new Event('change', { bubbles: true }));

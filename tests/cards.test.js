@@ -9,7 +9,7 @@ function boot(rawFavorites, options = {}) {
     constructor(kind = '', parent = null) { this.kind=kind; this.parent=parent; this.children=[];this.dataset={};this.attrs={};this.handlers={};this.hidden=false;this.value='';this.textContent='';this.style={};this.parts={};this.classList={toggle(){},contains:(name)=>this.kind==='.'+name}; }
     querySelector(s) { return this.parts[s] ||= new El(s, this); }
     setAttribute(k,v) { this.attrs[k]=v; }
-    addEventListener(k,f) { this.handlers[k]=f; }
+    addEventListener(k,f) { const previous=this.handlers[k]; this.handlers[k]=previous ? event=>{previous(event);f(event);} : f; }
     append(...nodes) { for (const n of nodes) { if (n.kind==='fragment') this.append(...n.children); else {this.children.push(n);n.parent=this;} } }
     replaceChildren() { this.children=[]; }
     closest(s) {return s.split(', ').includes(this.kind) || (s==='button[data-view]' && this.dataset.view) || (s==='button[data-category]' && this.dataset.category) ? this : this.parent?.closest(s);}
@@ -32,11 +32,22 @@ function boot(rawFavorites, options = {}) {
   const events={};const localStorage={getItem(k){if(options.blockRead)throw Error('denied');return store.get(k)??null;},setItem(k,v){if(options.blockWrite)throw Error('quota');store.set(k,v);}};
   let sequence=0;
   const form=document.querySelector('#title-form');
-  form.reset=function(){this.values={};for(const id of ['title','year','catalog-rating','duration'])document.querySelector('#'+id).value='';document.querySelector('#category').value='Фильм';this.resets=(this.resets||0)+1;};
+  form.reset=function(){this.handlers.reset?.();this.values={};for(const id of ['title','year','catalog-rating','duration'])document.querySelector('#'+id).value='';document.querySelector('#category').value='Фильм';this.resets=(this.resets||0)+1;};
   const FormData=class {constructor(form){this.values=form.values||{};}get(key){return this.values[key]??null;}};
   vm.runInNewContext(source,{document,localStorage,FormData,window:{KadrOnlineSearch:options.onlineSearch,KadrMonthly:options.monthly || monthly,navigator:options.navigator,matchMedia(){return {matches:false,addEventListener(){}};},addEventListener(k,f){events[k]=f;}},Intl,Date,Set,JSON,Number,Math,globalThis:{crypto:{randomUUID(){return 'new-'+(++sequence);}}}});
   return {ids,views,cats,store,document,events,options,entries,list:ids['#collection-list'],favorite(i){this.list.children[i].querySelector('.entry-favorite').click();},view(v){ids['#collection-views'].handlers.click({target:views.find(e=>e.dataset.view===v)});},category(c){ids['#category-filters'].handlers.click({target:cats.find(e=>e.dataset.category===c)});},search(q){ids['#catalog-search'].value=q;ids['#catalog-search'].handlers.input();},count(){return ids['#total-count'].textContent;},submit(values){form.values=values;for(const [key,id] of Object.entries({title:'title',category:'category',year:'year',catalogRating:'catalog-rating',duration:'duration'}))document.querySelector('#'+id).value=String(values[key]??'');form.handlers.submit({preventDefault(){}});},saved(){return JSON.parse(store.get('kadr.watchlist.v1'));}};
 }
+// Watch only reveals fixed links; it must not validate or submit the add form.
+const watchUI=boot();const watchBefore=watchUI.store.get('kadr.watchlist.v1');
+watchUI.ids['#title'].value='   ';watchUI.ids['#watch-button'].click();
+assert.equal(watchUI.ids['#watch-error'].textContent,'Введите название фильма');assert.equal(watchUI.ids['#watch-error'].hidden,false);assert.equal(watchUI.ids['#watch-links'].hidden,true);assert.equal(watchUI.document.activeElement,watchUI.ids['#title']);
+watchUI.ids['#title'].value='  Матрица  ';watchUI.ids['#title'].handlers.input();assert.equal(watchUI.ids['#watch-error'].hidden,true);
+watchUI.ids['#watch-button'].focus();watchUI.ids['#watch-button'].click();assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: Матрица');assert.equal(watchUI.ids['#watch-button'].attrs['aria-expanded'],'true');assert.equal(watchUI.document.activeElement,watchUI.ids['#watch-button']);assert.equal(watchUI.ids['#watch-links'].hidden,false);
+watchUI.ids['#watch-button'].click();assert.equal(watchUI.store.get('kadr.watchlist.v1'),watchBefore);
+watchUI.ids['#title'].value='Начало';watchUI.ids['#title'].handlers.change();assert.equal(watchUI.ids['#watch-links'].hidden,true);assert.equal(watchUI.ids['#watch-button'].attrs['aria-expanded'],'false');
+watchUI.ids['#title'].value='<b>Фильм & название</b>';watchUI.ids['#watch-button'].click();assert.equal(watchUI.ids['#watch-heading'].textContent,'Где смотреть: <b>Фильм & название</b>');
+watchUI.ids['#title-form'].reset();assert.equal(watchUI.ids['#watch-links'].hidden,true);assert.equal(watchUI.ids['#watch-error'].hidden,true);
+console.log('PASS: Watch empty/space error, trim, no submit/storage writes, safe heading, repeat, title input/change and form reset.');
 // Supplied local posters attach at render time without rewriting saved entries.
 const posterEntries=[['Матрица','1999','matrix.jpeg'],['Начало','2010','inception.jpg'],['Лабиринт Фавна','2006','pans-labyrinth.jpg'],['  интерстеллар  ',undefined,'interstellar.jpg']].map(([title,year,file],i)=>({id:'poster-'+i,title,year,file,category:'Фильм',status:'planned',rating:null,comment:'keep',createdAt:1000-i}));
 const posterApp=boot(null,{entries:posterEntries});

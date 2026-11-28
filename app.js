@@ -54,6 +54,33 @@
   let reportText = '';
   let reportVersion = 0;
 
+  const watchTitle = document.querySelector('#title');
+  const watchButton = document.querySelector('#watch-button');
+  const watchLinks = document.querySelector('#watch-links');
+  const watchError = document.querySelector('#watch-error');
+  function resetWatchLinks() {
+    watchLinks.hidden = true;
+    watchButton.setAttribute('aria-expanded', 'false');
+    watchError.hidden = true;
+    watchError.textContent = '';
+  }
+  watchButton.addEventListener('click', () => {
+    resetWatchLinks();
+    const name = watchTitle.value.trim();
+    if (!name) {
+      watchError.textContent = 'Введите название фильма';
+      watchError.hidden = false;
+      watchTitle.focus();
+      return;
+    }
+    document.querySelector('#watch-heading').textContent = 'Где смотреть: ' + name;
+    watchLinks.hidden = false;
+    watchButton.setAttribute('aria-expanded', 'true');
+  });
+  watchTitle.addEventListener('input', resetWatchLinks);
+  watchTitle.addEventListener('change', resetWatchLinks);
+  form.addEventListener('reset', resetWatchLinks);
+
   function isEntry(entry) {
     return entry && typeof entry.id === 'string' && typeof entry.title === 'string'
       && entry.title.trim().length > 0 && categories.includes(entry.category)
