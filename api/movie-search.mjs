@@ -1,8 +1,29 @@
-const ENDPOINT = 'https://api.poiskkino.dev/v1.5/movie/search';
+const ENDPOINTS = {
+  poiskkino: 'https://api.poiskkino.dev/v1.5/movie/search',
+  'kinopoisk-unofficial': 'https://kinopoiskapiunofficial.tech/api/v2.2/films'
+};
 const unavailable = 'Поиск недоступен. Заполните форму вручную';
 
+function adaptItem(item, provider) {
+  if (provider === 'kinopoisk-unofficial') {
+    const series = ['TV_SERIES', 'MINI_SERIES'].includes(item.type);
+    const animation = Array.isArray(item.genres) && item.genres.some(genre => typeof genre?.genre === 'string'
+      && ['мультфильм', 'аниме'].includes(genre.genre.toLocaleLowerCase('ru-RU')));
+    return { provider, id: item.kinopoiskId, name: item.nameRu, alternativeName: item.nameOriginal,
+      year: item.year, rating: { kp: item.ratingKinopoisk, imdb: item.ratingImdb },
+      type: animation ? (series ? 'animated-series' : 'cartoon') : series ? 'tv-series' : 'movie',
+      isSeries: series };
+  }
+  return { provider, id: item.id, name: item.name, alternativeName: item.alternativeName, year: item.year,
+    type: item.type, isSeries: item.isSeries, movieLength: item.movieLength,
+    seasonsInfo: Array.isArray(item.seasonsInfo) ? item.seasonsInfo.slice(0, 9999).map(season => ({ number: season?.number })) : [],
+    rating: { kp: item.rating?.kp, imdb: item.rating?.imdb }
+  };
+}
+
 // Dependencies can be replaced in isolated tests; the deployed handler uses native APIs.
-export function createSearchHandler({ getKey = () => process.env.POISKKINO_API_KEY,
+export function createSearchHandler({ getProvider = () => process.env.MOVIE_API_PROVIDER || 'poiskkino',
+  getKey = provider => provider === 'kinopoisk-unofficial' ? process.env.KINOPOISK_UNOFFICIAL_API_KEY : process.env.POISKKINO_API_KEY,
   fetcher = globalThis.fetch, now = Date.now } = {}) {
   const cache = new Map();
   const clients = new Map();
@@ -22,10 +43,12 @@ export function createSearchHandler({ getKey = () => process.env.POISKKINO_API_K
     const queries = url.searchParams.getAll('query');
     const query = queries.length === 1 ? queries[0].trim() : '';
     if (query.length < 3 || query.length > 160) return json(400, { error: 'Введите название от 3 до 160 символов' });
-    const key = getKey()?.trim();
+    const provider = getProvider()?.trim();
+    if (!Object.hasOwn(ENDPOINTS, provider)) return json(503, { error: unavailable });
+    const key = getKey(provider)?.trim();
     if (!key || /[\s\u0400-\u04ff]/.test(key)) return json(503, { error: unavailable });
     const time = now();
-    const cacheKey = query.toLocaleLowerCase('ru-RU');
+    const cacheKey = `${provider}:${query.toLocaleLowerCase('ru-RU')}`;
     for (const [id, item] of cache) if (item.expires <= time) cache.delete(id);
     if (cache.has(cacheKey)) return json(200, cache.get(cacheKey).data);
     for (const [id, item] of clients) if (item.until <= time) clients.delete(id);
@@ -38,27 +61,24 @@ export function createSearchHandler({ getKey = () => process.env.POISKKINO_API_K
     if (clients.size >= 500 && !clients.has(ip)) clients.delete(clients.keys().next().value);
     clients.set(ip, client);
     try {
-      const params = new URLSearchParams({ page: '1', limit: '10', query });
-      const response = await fetcher(`${ENDPOINT}?${params}`, {
+      const params = new URLSearchParams(provider === 'kinopoisk-unofficial'
+        ? { page: '1', keyword: query } : { page: '1', limit: '10', query });
+      const response = await fetcher(`${ENDPOINTS[provider]}?${params}`, {
         method: 'GET', headers: { 'X-API-KEY': key }, redirect: 'error',
         signal: AbortSignal.timeout(6000), credentials: 'omit'
       });
       if (!response.ok) {
-        const status = [401, 403, 429].includes(response.status) ? response.status : 502;
+        const status = response.status === 402 ? 429 : [401, 403, 429].includes(response.status) ? response.status : 502;
         const retry = response.headers.get('Retry-After');
         return json(status, { error: unavailable }, status === 429 ? {
           'Retry-After': retry && /^\d+$/.test(retry) ? String(Math.min(3600, Math.max(1, Number(retry)))) : '10'
         } : {});
       }
       const body = await response.json();
-      if (body?.error || !Array.isArray(body?.docs)) return json(502, { error: unavailable });
+      const rows = provider === 'kinopoisk-unofficial' ? body?.items : body?.docs;
+      if (body?.error || !Array.isArray(rows)) return json(502, { error: unavailable });
       // Only public fields used by the form are returned; no provider headers or error bodies.
-      const data = { docs: body.docs.slice(0, 10).filter(item => item && typeof item === 'object').map(item => ({
-        id: item.id, name: item.name, alternativeName: item.alternativeName, year: item.year,
-        type: item.type, isSeries: item.isSeries, movieLength: item.movieLength,
-        seasonsInfo: Array.isArray(item.seasonsInfo) ? item.seasonsInfo.slice(0, 9999).map(season => ({ number: season?.number })) : [],
-        rating: { kp: item.rating?.kp, imdb: item.rating?.imdb }
-      })) };
+      const data = { docs: rows.slice(0, 20).filter(item => item && typeof item === 'object').map(item => adaptItem(item, provider)) };
       if (cache.size >= 100) cache.delete(cache.keys().next().value);
       cache.set(cacheKey, { data, expires: time + 300000 });
       return json(200, data);

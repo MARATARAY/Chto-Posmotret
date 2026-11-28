@@ -6,6 +6,8 @@
   const ratingText = value => externalRating(value) === null ? '—' : value.toFixed(1);
   function normalize(item) {
     if (!item || !Number.isSafeInteger(item.id) || item.id <= 0) return null;
+    const provider = item.provider ?? 'poiskkino';
+    if (!['poiskkino', 'kinopoisk-unofficial'].includes(provider)) return null;
     const title = [item.name, item.alternativeName].find(value => typeof value === 'string' && value.trim());
     if (!title || title.trim().length > 160) return null;
     const series = ['animated-series', 'tv-series', 'mini-series'].includes(item.type) || item.isSeries === true;
@@ -14,7 +16,8 @@
     const length = Number.isInteger(item.movieLength) && item.movieLength > 0 && item.movieLength <= 9999;
     const seasons = new Set((Array.isArray(item.seasonsInfo) ? item.seasonsInfo : [])
       .map(season => season?.number).filter(number => Number.isInteger(number) && number > 0 && number <= 9999));
-    return { id: item.id, title: title.trim(), category,
+    return { id: item.id, provider, title: title.trim(), category,
+      originalTitle: !(typeof item.name === 'string' && item.name.trim()),
       year: Number.isInteger(item.year) && /^[1-9]\d{3}$/.test(String(item.year)) ? String(item.year) : '',
       kpRating: externalRating(item.rating?.kp), imdbRating: externalRating(item.rating?.imdb),
       duration: length ? String(item.movieLength) : series ? String(seasons.size || 1) : '',
@@ -71,10 +74,13 @@
         field.value = values[i]; field.dispatchEvent(new Event('change', { bubbles: true }));
       });
       imported = { ...show, values, edited: new Set() };
-      source.href = 'https://poiskkino.dev'; source.hidden = false;
+      source.href = show.provider === 'kinopoisk-unofficial' ? 'https://kinopoiskapiunofficial.tech' : 'https://poiskkino.dev';
+      source.textContent = show.provider === 'kinopoisk-unofficial' ? 'Данные Kinopoisk Unofficial' : 'Данные ПоискКино';
+      source.hidden = false;
       kpField.value = show.kpRating === null ? '' : ratingText(show.kpRating);
       imdbField.value = show.imdbRating === null ? '' : ratingText(show.imdbRating); title.focus();
       status.textContent = 'Данные заполнены. Проверьте поля перед добавлением.'
+        + (show.originalTitle ? ' Оригинальное название.' : '')
         + (show.durationDefault ? ' Длительность 1 сезон задана по умолчанию.' : '');
     }
     function showOptions(items) {
@@ -83,7 +89,8 @@
         const item = document.createElement('li');
         item.id = `title-option-${i}`; item.setAttribute('role', 'option'); item.setAttribute('aria-selected', 'false');
         const caption = document.createElement('span');
-        caption.textContent = `${show.title} · ${show.year || 'Год не указан'} · ${show.category}`;
+        caption.textContent = `${show.title} · ${show.year || 'Год не указан'} · ${show.category}`
+          + (show.originalTitle ? ' · Оригинальное название' : '');
         const badges = document.createElement('span'); badges.className = 'source-ratings';
         paintRatings(badges, show); item.append(caption); item.append(badges);
         // Keep input focus until click, including taps, so blur cannot discard the selection.
@@ -130,8 +137,10 @@
         const seen = new Set(); const items = [];
         for (const row of data.docs) {
           const show = normalize(row);
-          if (!show || seen.has(show.id)) continue;
-          seen.add(show.id); items.push(show);
+          if (!show) continue;
+          const identity = `${show.provider}:${show.id}`;
+          if (seen.has(identity)) continue;
+          seen.add(identity); items.push(show);
           if (items.length === 5) break;
         }
         if (cache.size >= 20) cache.delete(cache.keys().next().value);
@@ -177,7 +186,9 @@
     form.addEventListener('reset', () => { close(); imported = null; source.hidden = true; kpField.value = ''; imdbField.value = ''; status.textContent = ''; });
     return { getMetadata() {
       if (!imported || title.value !== imported.title) return {};
-      return { poiskkinoId: imported.id, kpRating: imported.kpRating, imdbRating: imported.imdbRating };
+      return { ratingProvider: imported.provider,
+        ...(imported.provider === 'kinopoisk-unofficial' ? { kinopoiskId: imported.id } : { poiskkinoId: imported.id }),
+        kpRating: imported.kpRating, imdbRating: imported.imdbRating };
     } };
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { init, normalize, ratingText };

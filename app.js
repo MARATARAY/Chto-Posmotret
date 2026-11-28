@@ -272,8 +272,12 @@
       card.querySelector('.entry-date').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(entry.createdAt);
       const hasWikidata = typeof entry.wikidataId === 'string' && /^Q[1-9]\d*$/.test(entry.wikidataId);
       const hasTVmaze = Number.isSafeInteger(entry.tvmazeId) && entry.tvmazeId > 0;
-      const hasPoiskkino = Number.isSafeInteger(entry.poiskkinoId) && entry.poiskkinoId > 0;
-      const hasSource = hasPoiskkino || hasWikidata || hasTVmaze;
+      const hasPoiskkino = (!entry.ratingProvider || entry.ratingProvider === 'poiskkino')
+        && Number.isSafeInteger(entry.poiskkinoId) && entry.poiskkinoId > 0;
+      const hasUnofficial = entry.ratingProvider === 'kinopoisk-unofficial'
+        && Number.isSafeInteger(entry.kinopoiskId) && entry.kinopoiskId > 0;
+      const hasExternalRatings = hasPoiskkino || hasUnofficial;
+      const hasSource = hasExternalRatings || hasWikidata || hasTVmaze;
       const ratingLabel = !hasWikidata && hasTVmaze && entry.ratingSource === 'TVmaze' ? 'Рейтинг TVmaze' : 'Рейтинг';
       const details = [];
       if (/^[1-9]\d{3}$/.test(String(entry.year ?? ''))) details.push(String(entry.year));
@@ -285,8 +289,8 @@
       detailLine.textContent = details.join(' · ');
       detailLine.hidden = details.length === 0;
       const externalScores = card.querySelector('.entry-source-ratings');
-      externalScores.hidden = !hasPoiskkino;
-      if (hasPoiskkino) {
+      externalScores.hidden = !hasExternalRatings;
+      if (hasExternalRatings) {
         for (const [label, value] of [['КП', entry.kpRating], ['IMDb', entry.imdbRating]]) {
           const badge = document.createElement('span'); badge.className = 'rating-badge';
           badge.textContent = `${label}: ${typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 10 ? value.toFixed(1) : '—'}`;
@@ -295,8 +299,8 @@
       }
       const sourceLink = card.querySelector('.entry-source');
       sourceLink.hidden = !hasSource;
-      sourceLink.textContent = hasPoiskkino ? 'Данные ПоискКино' : hasWikidata ? 'Данные Wikidata' : 'Данные TVmaze';
-      if (hasSource) sourceLink.href = hasPoiskkino ? 'https://poiskkino.dev' : hasWikidata ? `https://www.wikidata.org/wiki/${entry.wikidataId}` : `https://www.tvmaze.com/shows/${entry.tvmazeId}`;
+      sourceLink.textContent = hasUnofficial ? 'Данные Kinopoisk Unofficial' : hasPoiskkino ? 'Данные ПоискКино' : hasWikidata ? 'Данные Wikidata' : 'Данные TVmaze';
+      if (hasSource) sourceLink.href = hasUnofficial ? 'https://kinopoiskapiunofficial.tech' : hasPoiskkino ? 'https://poiskkino.dev' : hasWikidata ? `https://www.wikidata.org/wiki/${entry.wikidataId}` : `https://www.tvmaze.com/shows/${entry.tvmazeId}`;
       card.querySelector('.entry-comment').textContent = entry.comment;
       card.querySelector('.entry-comment').hidden = !entry.comment;
       card.querySelector('.entry-art > span').textContent = { 'Фильм': '▶', 'Сериал': '▤', 'Мультфильм': '✳', 'Другое': '◈' }[entry.category];
